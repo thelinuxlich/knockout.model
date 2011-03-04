@@ -1,5 +1,17 @@
 (function() {
   var __hasProp = Object.prototype.hasOwnProperty;
+  ko.utils.unescapeHtml = function(str) {
+    var result, temp;
+    if (str.length > 0) {
+      temp = document.createElement("div");
+      temp.innerHTML = str;
+      result = temp.childNodes[0].nodeValue;
+      temp.removeChild(temp.firstChild);
+      return result;
+    } else {
+      return str;
+    }
+  };
   this.KnockoutModel = (function() {
     function KnockoutModel(defaults, urls) {
       this.__defaults = typeof defaults === "object" ? defaults : {};
@@ -15,9 +27,9 @@
         if (!__hasProp.call(args, i)) continue;
         item = args[i];
         if (ko.isWriteableObservable(this[i])) {
-          this[i](typeof item === "string" && item.match(/^&[^\s]*;$/) ? item.unescapeHtml() : item);
+          this[i](typeof item === "string" && item.match(/^&[^\s]*;$/) ? ko.utils.unescapeHtml(item) : item);
         } else if (this[i] !== void 0) {
-          this[i] = typeof item === "string" && item.match(/^&[^\s]*;$/) ? item.unescapeHtml() : item;
+          this[i] = typeof item === "string" && item.match(/^&[^\s]*;$/) ? ko.utils.unescapeHtml(item) : item;
         }
       }
       return this;

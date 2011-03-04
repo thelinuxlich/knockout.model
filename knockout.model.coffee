@@ -1,3 +1,14 @@
+# Helper function
+ko.utils.unescapeHtml = (str) ->
+  if str.length > 0
+    temp = document.createElement "div"
+    temp.innerHTML = str
+    result = temp.childNodes[0].nodeValue
+    temp.removeChild temp.firstChild
+    result
+  else
+    str
+
 # Base model
 class @KnockoutModel
 
@@ -16,9 +27,9 @@ class @KnockoutModel
     set: (args) ->
         for own i,item of args
             if ko.isWriteableObservable(@[i])
-                @[i](if typeof item is "string" and item.match(/^&[^\s]*;$/) then item.unescapeHtml() else item)
+                @[i](if typeof item is "string" and item.match(/^&[^\s]*;$/) then ko.utils.unescapeHtml(item) else item)
             else if @[i] isnt undefined
-                @[i] = if typeof item is "string" and item.match(/^&[^\s]*;$/) then item.unescapeHtml() else item
+                @[i] = if typeof item is "string" and item.match(/^&[^\s]*;$/) then ko.utils.unescapeHtml(item) else item
         @
 
     # Clear all attributes and set default values
