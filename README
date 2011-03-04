@@ -17,13 +17,13 @@ Example(see docs for more details):
 class @Employee extends KnockoutModel
 
     constructor: (defaults) ->
-        @id = KO ""
-        @name = KO ""
-        @surname = KO ""
-        @fullname = KO (-> @name() + " " + @surname()), @
-        @birth_date = KO ""
-        @address = KO ""
-        @phone = KO ""
+        @id = ko.observable ""
+        @name = ko.observable ""
+        @surname = ko.observable ""
+        @fullname = ko.dependentObservable(-> @name() + " " + @surname()), @
+        @birth_date = ko.observable ""
+        @address = ko.observable ""
+        @phone = ko.observable ""
         urls =
             "get": "http://#{window.location.host}/employees"
             "post": "http://#{window.location.host}/employees/post"
