@@ -40,7 +40,7 @@ class @KnockoutModel
         temp = @clone(options)
         temp["__no_cache"] = new Date()
         ko.toJSON(temp)
-    
+
     # Convert whole model to a plain JS object, adds a random attribute to avoid IE issues with GET requests
     toJS: (options) ->
         temp = @clone(options)
@@ -110,24 +110,25 @@ class @KnockoutModel
         params = $.extend(params,{id: @get("id")})
         RQ.add $.post @__urls["delete"], params, (data) ->
             callback(data) if typeof callback is "function"
-        , "rq_#{@constructor.name}_"+new Date()    
+        , "rq_#{@constructor.name}_"+new Date()
 
     # Fetch by model ID using the "get" URL
     fetchOne: ->
         __no_cache = new Date()
         [params,callback] = @__generate_request_parameters.apply(@,arguments)
-        params = $.extend(params,{id: @get("id")})
-        RQ.add $.getJSON @__urls["get"]+"?foo="+__no_cache, {id: @get("id")}, (data) ->
+        params = $.extend(params,{id: @get("id"),foo: __no_cache})
+        RQ.add $.getJSON @__urls["get"], params, (data) ->
             callback(data) if typeof callback is "function"
-        , "rq_#{@constructor.name}_"+new Date()    
+        , "rq_#{@constructor.name}_"+new Date()
 
-    # Fetch all using the "get" URL 
+    # Fetch all using the "get" URL
     fetchAll: ->
         __no_cache = new Date()
         [params,callback] = @__generate_request_parameters.apply(@,arguments)
-        RQ.add $.getJSON @__urls["get"]+"?foo="+__no_cache, params, (data) ->
+        params = $.extend(params,{foo: __no_cache})
+        RQ.add $.getJSON @__urls["get"], params, (data) ->
             callback(data) if typeof callback is "function"
-        , "rq_#{@constructor.name}_"+new Date()    
+        , "rq_#{@constructor.name}_"+new Date()
 
     # Abort all requests of this model
     killAllRequests: ->

@@ -149,11 +149,10 @@
       __no_cache = new Date();
       _ref = this.__generate_request_parameters.apply(this, arguments), params = _ref[0], callback = _ref[1];
       params = $.extend(params, {
-        id: this.get("id")
+        id: this.get("id"),
+        foo: __no_cache
       });
-      return RQ.add($.getJSON(this.__urls["get"] + "?foo=" + __no_cache, {
-        id: this.get("id")
-      }, function(data) {
+      return RQ.add($.getJSON(this.__urls["get"], params, function(data) {
         if (typeof callback === "function") {
           return callback(data);
         }
@@ -163,7 +162,10 @@
       var callback, params, __no_cache, _ref;
       __no_cache = new Date();
       _ref = this.__generate_request_parameters.apply(this, arguments), params = _ref[0], callback = _ref[1];
-      return RQ.add($.getJSON(this.__urls["get"] + "?foo=" + __no_cache, params, function(data) {
+      params = $.extend(params, {
+        foo: __no_cache
+      });
+      return RQ.add($.getJSON(this.__urls["get"], params, function(data) {
         if (typeof callback === "function") {
           return callback(data);
         }
