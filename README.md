@@ -1,7 +1,10 @@
 # Knockout.model plugin
 Copyright 2011, Alisson Cavalcante Agiani
+
 Licensed under the MIT license.
+
 http://github.com/thelinuxlich/knockout.model/MIT-LICENSE.txt
+
 Date: Fri Mar 04 14:00:29 2011 -0300
 
 ## Files:
