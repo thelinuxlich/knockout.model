@@ -63,13 +63,11 @@
     KnockoutModel.prototype.toJSON = function(options) {
       var temp;
       temp = this.clone(options);
-      temp["__no_cache"] = new Date();
       return ko.toJSON(temp);
     };
     KnockoutModel.prototype.toJS = function(options) {
       var temp;
       temp = this.clone(options);
-      temp["__no_cache"] = new Date();
       return ko.toJS(temp);
     };
     KnockoutModel.prototype.clone = function(args) {
@@ -139,7 +137,7 @@
       var callback, params, _ref;
       _ref = this.__generate_request_parameters.apply(this, arguments), params = _ref[0], callback = _ref[1];
       params = $.extend(params, this.toJS());
-      return RQ.add($.post(this.__parse_url(this.__urls["post"]), params, function(data) {
+      return RQ.add($.post(this.__parse_url(this.__urls["create"]), params, function(data) {
         if (typeof callback === "function") {
           return callback(data);
         }
@@ -149,7 +147,7 @@
       var callback, params, _ref;
       _ref = this.__generate_request_parameters.apply(this, arguments), params = _ref[0], callback = _ref[1];
       params = $.extend(params, this.toJS());
-      return RQ.add($.post(this.__parse_url(this.__urls["put"]), params, function(data) {
+      return RQ.add($.post(this.__parse_url(this.__urls["update"]), params, function(data) {
         if (typeof callback === "function") {
           return callback(data);
         }
@@ -158,13 +156,13 @@
     KnockoutModel.prototype.destroy = function() {
       var callback, params, _ref;
       _ref = this.__generate_request_parameters.apply(this, arguments), params = _ref[0], callback = _ref[1];
-      return RQ.add($.post(this.__parse_url(this.__urls["delete"]), params, function(data) {
+      return RQ.add($.post(this.__parse_url(this.__urls["destroy"]), params, function(data) {
         if (typeof callback === "function") {
           return callback(data);
         }
       }, ("rq_" + this.constructor.name + "_") + new Date()));
     };
-    KnockoutModel.prototype.fetchOne = function() {
+    KnockoutModel.prototype.show = function() {
       var callback, params, __no_cache, _ref;
       __no_cache = new Date();
       _ref = this.__generate_request_parameters.apply(this, arguments), params = _ref[0], callback = _ref[1];
@@ -177,7 +175,7 @@
         }
       }, ("rq_" + this.constructor.name + "_") + new Date()));
     };
-    KnockoutModel.prototype.fetchAll = function() {
+    KnockoutModel.prototype.index = function() {
       var callback, params, __no_cache, _ref;
       __no_cache = new Date();
       _ref = this.__generate_request_parameters.apply(this, arguments), params = _ref[0], callback = _ref[1];
