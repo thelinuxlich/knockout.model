@@ -98,12 +98,18 @@ class @KnockoutModel
                 callback = arguments[1]
         [params,callback]
 
+    # parses an url(Sinatra-like style with :parameters)
+    __parse_url: (url) ->
+      params = url.match /:[a-zA-Z0-9_]+/
+      if params.length > 0
+        url.replace param,@get(param.substring(1)) for param in params
+      url
 
     # Starts an AJAX request to create the entity using the "post" URL
     create: ->
         [params,callback] = @__generate_request_parameters.apply(@,arguments)
         params = $.extend(params,@toJS())
-        RQ.add $.post @__urls["post"], params, (data) ->
+        RQ.add $.post @__parse_url(@__urls["post"]), params, (data) ->
             callback(data) if typeof callback is "function"
         , "rq_#{@constructor.name}_"+new Date()
 
@@ -111,15 +117,14 @@ class @KnockoutModel
     update: ->
         [params,callback] = @__generate_request_parameters.apply(@,arguments)
         params = $.extend(params,@toJS())
-        RQ.add $.post @__urls["put"], params, (data) ->
+        RQ.add $.post @__parse_url(@__urls["put"]), params, (data) ->
             callback(data) if typeof callback is "function"
         , "rq_#{@constructor.name}_"+new Date()
 
     # Starts an AJAX request to remove the entity using the "delete" URL
     destroy: ->
         [params,callback] = @__generate_request_parameters.apply(@,arguments)
-        params = $.extend(params,{id: @get("id")})
-        RQ.add $.post @__urls["delete"], params, (data) ->
+        RQ.add $.post @__parse_url(@__urls["delete"]), params, (data) ->
             callback(data) if typeof callback is "function"
         , "rq_#{@constructor.name}_"+new Date()
 
@@ -127,8 +132,8 @@ class @KnockoutModel
     fetchOne: ->
         __no_cache = new Date()
         [params,callback] = @__generate_request_parameters.apply(@,arguments)
-        params = $.extend(params,{id: @get("id"),foo: __no_cache})
-        RQ.add $.getJSON @__urls["get"], params, (data) ->
+        params = $.extend(params,{foo: __no_cache})
+        RQ.add $.getJSON @__parse_url(@__urls["show"]), params, (data) ->
             callback(data) if typeof callback is "function"
         , "rq_#{@constructor.name}_"+new Date()
 
@@ -137,7 +142,7 @@ class @KnockoutModel
         __no_cache = new Date()
         [params,callback] = @__generate_request_parameters.apply(@,arguments)
         params = $.extend(params,{foo: __no_cache})
-        RQ.add $.getJSON @__urls["get"], params, (data) ->
+        RQ.add $.getJSON @__parse_url(@__urls["index"]), params, (data) ->
             callback(data) if typeof callback is "function"
         , "rq_#{@constructor.name}_"+new Date()
 

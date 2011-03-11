@@ -124,11 +124,22 @@
       }
       return [params, callback];
     };
+    KnockoutModel.prototype.__parse_url = function(url) {
+      var param, params, _i, _len;
+      params = url.match(/:[a-zA-Z0-9_]+/);
+      if (params.length > 0) {
+        for (_i = 0, _len = params.length; _i < _len; _i++) {
+          param = params[_i];
+          url.replace(param, this.get(param.substring(1)));
+        }
+      }
+      return url;
+    };
     KnockoutModel.prototype.create = function() {
       var callback, params, _ref;
       _ref = this.__generate_request_parameters.apply(this, arguments), params = _ref[0], callback = _ref[1];
       params = $.extend(params, this.toJS());
-      return RQ.add($.post(this.__urls["post"], params, function(data) {
+      return RQ.add($.post(this.__parse_url(this.__urls["post"]), params, function(data) {
         if (typeof callback === "function") {
           return callback(data);
         }
@@ -138,7 +149,7 @@
       var callback, params, _ref;
       _ref = this.__generate_request_parameters.apply(this, arguments), params = _ref[0], callback = _ref[1];
       params = $.extend(params, this.toJS());
-      return RQ.add($.post(this.__urls["put"], params, function(data) {
+      return RQ.add($.post(this.__parse_url(this.__urls["put"]), params, function(data) {
         if (typeof callback === "function") {
           return callback(data);
         }
@@ -147,10 +158,7 @@
     KnockoutModel.prototype.destroy = function() {
       var callback, params, _ref;
       _ref = this.__generate_request_parameters.apply(this, arguments), params = _ref[0], callback = _ref[1];
-      params = $.extend(params, {
-        id: this.get("id")
-      });
-      return RQ.add($.post(this.__urls["delete"], params, function(data) {
+      return RQ.add($.post(this.__parse_url(this.__urls["delete"]), params, function(data) {
         if (typeof callback === "function") {
           return callback(data);
         }
@@ -161,10 +169,9 @@
       __no_cache = new Date();
       _ref = this.__generate_request_parameters.apply(this, arguments), params = _ref[0], callback = _ref[1];
       params = $.extend(params, {
-        id: this.get("id"),
         foo: __no_cache
       });
-      return RQ.add($.getJSON(this.__urls["get"], params, function(data) {
+      return RQ.add($.getJSON(this.__parse_url(this.__urls["show"]), params, function(data) {
         if (typeof callback === "function") {
           return callback(data);
         }
@@ -177,7 +184,7 @@
       params = $.extend(params, {
         foo: __no_cache
       });
-      return RQ.add($.getJSON(this.__urls["get"], params, function(data) {
+      return RQ.add($.getJSON(this.__parse_url(this.__urls["index"]), params, function(data) {
         if (typeof callback === "function") {
           return callback(data);
         }

@@ -30,7 +30,8 @@ Date: Fri Mar 04 14:00:29 2011 -0300
             @address = ko.observable ""
             @phone = ko.observable ""
             urls =
-                "get": "http://#{window.location.host}/employees"
+                "index": "http://#{window.location.host}/employees"
+                "show": "http://#{window.location.host}/employees/:id"
                 "post": "http://#{window.location.host}/employees/post"
                 "put": "http://#{window.location.host}/employees/put"
                 "delete": "http://#{window.location.host}/employees/delete"
