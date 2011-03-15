@@ -1,5 +1,13 @@
 (function() {
   var __hasProp = Object.prototype.hasOwnProperty;
+  ko.utils.IdentityMap = function() {
+    return this.find = function(id, params) {
+      return $.grep(this, function(d) {
+        return d.id === id && ko.utils.stringifyJson(d.params) === ko.utils.stringifyJson(params);
+      })[0];
+    };
+  };
+  ko.utils.IdentityMap.prototype = new Array();
   ko.utils.unescapeHtml = function(str) {
     var result, temp;
     if (str.length > 0) {
@@ -15,6 +23,7 @@
   this.KnockoutModel = (function() {
     KnockoutModel.__urls = {};
     KnockoutModel.__defaults = {};
+    KnockoutModel.__cacheContainer = new ko.utils.IdentityMap();
     function KnockoutModel() {
       this.set(this.constructor.__defaults);
     }
@@ -35,11 +44,13 @@
       return this;
     };
     KnockoutModel.createCollection = function(data) {
-      var collection, item, _i, _len;
+      var collection, item, obj, _i, _len;
       collection = [];
       for (_i = 0, _len = data.length; _i < _len; _i++) {
         item = data[_i];
-        collection.push(new this.set(item));
+        obj = new this;
+        obj.set(item);
+        collection.push(obj);
       }
       return collection;
     };
@@ -128,16 +139,15 @@
       return [params, callback];
     };
     KnockoutModel.__parse_url = function(url, params) {
-      var fixed_param, fixed_params, _i, _len, _results;
+      var fixed_param, fixed_params, _i, _len;
       fixed_params = url.match(/:[a-zA-Z0-9_]+/);
       if ((fixed_params != null) && fixed_params.length > 0) {
-        _results = [];
         for (_i = 0, _len = fixed_params.length; _i < _len; _i++) {
           fixed_param = fixed_params[_i];
-          _results.push(url.replace(fixed_param, params[fixed_param.substring(1)]));
+          url = url.replace(fixed_param, params[fixed_param.substring(1)]);
         }
-        return _results;
       }
+      return url;
     };
     KnockoutModel.prototype.create = function() {
       var callback, params, _ref;
@@ -170,30 +180,62 @@
       }, ("rq_" + this.constructor.name + "_") + new Date()));
     };
     KnockoutModel.prototype.show = function() {
-      var callback, params, __no_cache, _ref;
-      __no_cache = new Date();
+      var cached, callback, isCache, params, tempParams, _ref;
       _ref = this.constructor.__generate_request_parameters.apply(this, arguments), params = _ref[0], callback = _ref[1];
-      params = $.extend(params, {
-        foo: __no_cache
-      });
-      return RQ.add($.getJSON(this.constructor.__parse_url(this.constructor.__urls["show"], params), params, function(data) {
+      isCache = (params != null) && params["__cache"] === true;
+      if (isCache === true) {
+        cached = this.constructor.__cacheContainer.find("" + this.name + "#show", params);
+      }
+      if (cached != null) {
         if (typeof callback === "function") {
-          return callback(data);
+          return callback(cached.data);
         }
-      }, ("rq_" + this.constructor.name + "_") + new Date()));
+      } else {
+        delete params["__cache"];
+        tempParams = params;
+        tempParams["__no_cache"] = new Date().getTime();
+        return RQ.add($.getJSON(this.constructor.__parse_url(this.construtor.__urls["show"], params), tempParams, function(data) {
+          if (isCache === true) {
+            this.constructor.__cacheContainer.push({
+              id: "" + this.constructor.name + "#show",
+              params: params,
+              data: data
+            });
+          }
+          if (typeof callback === "function") {
+            return callback(data);
+          }
+        }, ("rq_" + this.constructor.name + "_") + new Date()));
+      }
     };
     KnockoutModel.prototype.index = function() {
-      var callback, params, __no_cache, _ref;
-      __no_cache = new Date();
+      var cached, callback, isCache, params, tempParams, _ref;
       _ref = this.constructor.__generate_request_parameters.apply(this, arguments), params = _ref[0], callback = _ref[1];
-      params = $.extend(params, {
-        foo: __no_cache
-      });
-      return RQ.add($.getJSON(this.constructor.__parse_url(this.constructor.__urls["index"], params), params, function(data) {
+      isCache = (params != null) && params["__cache"] === true;
+      if (isCache === true) {
+        cached = this.constructor.__cacheContainer.find("" + this.name + "#index", params);
+      }
+      if (cached != null) {
         if (typeof callback === "function") {
-          return callback(data);
+          return callback(cached.data);
         }
-      }, ("rq_" + this.constructor.name + "_") + new Date()));
+      } else {
+        delete params["__cache"];
+        tempParams = params;
+        tempParams["__no_cache"] = new Date().getTime();
+        return RQ.add($.getJSON(this.constructor.__parse_url(this.constructor.__urls["index"], params), tempParams, function(data) {
+          if (isCache === true) {
+            this.constructor.__cacheContainer.push({
+              id: "" + this.constructor.name + "#index",
+              params: params,
+              data: data
+            });
+          }
+          if (typeof callback === "function") {
+            return callback(data);
+          }
+        }, ("rq_" + this.constructor.name + "_") + new Date()));
+      }
     };
     KnockoutModel.create = function() {
       var callback, params, _ref;
@@ -223,30 +265,62 @@
       }, ("rq_" + this.name + "_") + new Date()));
     };
     KnockoutModel.show = function() {
-      var callback, params, __no_cache, _ref;
-      __no_cache = new Date();
+      var cached, callback, isCache, params, tempParams, _ref;
       _ref = this.__generate_request_parameters.apply(this, arguments), params = _ref[0], callback = _ref[1];
-      params = $.extend(params, {
-        foo: __no_cache
-      });
-      return RQ.add($.getJSON(this.__parse_url(this.__urls["show"], params), params, function(data) {
+      isCache = (params != null) && params["__cache"] === true;
+      if (isCache === true) {
+        cached = this.__cacheContainer.find("" + this.name + "#show", params);
+      }
+      if (cached != null) {
         if (typeof callback === "function") {
-          return callback(data);
+          return callback(cached.data);
         }
-      }, ("rq_" + this.name + "_") + new Date()));
+      } else {
+        delete params["__cache"];
+        tempParams = params;
+        tempParams["__no_cache"] = new Date().getTime();
+        return RQ.add($.getJSON(this.__parse_url(this.__urls["show"], params), tempParams, function(data) {
+          if (isCache === true) {
+            this.__cacheContainer.push({
+              id: "" + this.name + "#show",
+              params: params,
+              data: data
+            });
+          }
+          if (typeof callback === "function") {
+            return callback(data);
+          }
+        }, ("rq_" + this.name + "_") + new Date()));
+      }
     };
     KnockoutModel.index = function() {
-      var callback, params, __no_cache, _ref;
-      __no_cache = new Date();
+      var cached, callback, isCache, params, tempParams, _ref;
       _ref = this.__generate_request_parameters.apply(this, arguments), params = _ref[0], callback = _ref[1];
-      params = $.extend(params, {
-        foo: __no_cache
-      });
-      return RQ.add($.getJSON(this.__parse_url(this.__urls["index"], params), params, function(data) {
+      isCache = (params != null) && params["__cache"] === true;
+      if (isCache === true) {
+        cached = this.__cacheContainer.find("" + this.name + "#index", params);
+      }
+      if (cached != null) {
         if (typeof callback === "function") {
-          return callback(data);
+          return callback(cached.data);
         }
-      }, ("rq_" + this.name + "_") + new Date()));
+      } else {
+        delete params["__cache"];
+        tempParams = params;
+        tempParams["__no_cache"] = new Date().getTime();
+        return RQ.add($.getJSON(this.__parse_url(this.__urls["index"], params), tempParams, function(data) {
+          if (isCache === true) {
+            this.__cacheContainer.push({
+              id: "" + this.name + "#index",
+              params: params,
+              data: data
+            });
+          }
+          if (typeof callback === "function") {
+            return callback(data);
+          }
+        }, ("rq_" + this.name + "_") + new Date()));
+      }
     };
     KnockoutModel.killAllRequests = function() {
       return RQ.killByRegex(/^rq_#{@name}_/);

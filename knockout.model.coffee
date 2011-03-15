@@ -1,3 +1,13 @@
+# Cache implementation using the IdentityMap pattern
+ko.utils.IdentityMap = ->
+
+    #Simple object comparison by value
+    this.find = (id,params) ->
+        $.grep(@,(d) ->
+            d.id is id and ko.utils.stringifyJson(d.params) is ko.utils.stringifyJson(params)
+        )[0]
+ko.utils.IdentityMap.prototype = new Array()
+
 # Helper function
 ko.utils.unescapeHtml = (str) ->
   if str.length > 0
@@ -15,6 +25,7 @@ class @KnockoutModel
     # Override these static values on your model
     @__urls: {}
     @__defaults: {}
+    @__cacheContainer: new ko.utils.IdentityMap()
 
     # Sets default values on initialization
     constructor: ->
@@ -38,7 +49,9 @@ class @KnockoutModel
     @createCollection: (data) ->
         collection = []
         for item in data
-            collection.push new(@).set(item)
+            obj = new @
+            obj.set(item)
+            collection.push(obj)
         collection
 
     # Clear all attributes and set default values
@@ -106,7 +119,8 @@ class @KnockoutModel
     @__parse_url: (url,params) ->
       fixed_params = url.match /:[a-zA-Z0-9_]+/
       if fixed_params? and fixed_params.length > 0
-        url.replace fixed_param,params[fixed_param.substring(1)] for fixed_param in fixed_params
+        url = url.replace fixed_param,params[fixed_param.substring(1)] for fixed_param in fixed_params
+      url
 
     # Starts an AJAX request to create the entity using the "create" URL
     create: ->
@@ -134,21 +148,35 @@ class @KnockoutModel
 
     # Fetch by model ID using the "show" URL
     show: ->
-        __no_cache = new Date()
         [params,callback] = @constructor.__generate_request_parameters.apply(@,arguments)
-        params = $.extend(params,{foo: __no_cache})
-        RQ.add $.getJSON @constructor.__parse_url(@constructor.__urls["show"],params), params, (data) ->
-            callback(data) if typeof callback is "function"
-        , "rq_#{@constructor.name}_"+new Date()
+        isCache = params? and params["__cache"] is true
+        cached = @constructor.__cacheContainer.find("#{@name}#show", params) if isCache is true
+        if cached?
+            callback(cached.data) if typeof callback is "function"
+        else
+            delete params["__cache"]
+            tempParams = params
+            tempParams["__no_cache"] = new Date().getTime()
+            RQ.add $.getJSON @constructor.__parse_url(@construtor.__urls["show"],params), tempParams, (data) ->
+                @constructor.__cacheContainer.push({id: "#{@constructor.name}#show", params: params,data: data}) if isCache is true
+                callback(data) if typeof callback is "function"
+            , "rq_#{@constructor.name}_"+new Date()
 
     # Fetch all using the "index" URL
     index: ->
-        __no_cache = new Date()
         [params,callback] = @constructor.__generate_request_parameters.apply(@,arguments)
-        params = $.extend(params,{foo: __no_cache})
-        RQ.add $.getJSON @constructor.__parse_url(@constructor.__urls["index"],params), params, (data) ->
-            callback(data) if typeof callback is "function"
-        , "rq_#{@constructor.name}_"+new Date()
+        isCache = params? and params["__cache"] is true
+        cached = @constructor.__cacheContainer.find("#{@name}#index", params) if isCache is true
+        if cached?
+            callback(cached.data) if typeof callback is "function"
+        else
+            delete params["__cache"]
+            tempParams = params
+            tempParams["__no_cache"] = new Date().getTime()
+            RQ.add $.getJSON @constructor.__parse_url(@constructor.__urls["index"],params), tempParams, (data) ->
+                @constructor.__cacheContainer.push({id: "#{@constructor.name}#index", params: params,data: data}) if isCache is true
+                callback(data) if typeof callback is "function"
+            , "rq_#{@constructor.name}_"+new Date()
 
     # (static) Starts an AJAX request to create the entity using the "create" URL
     @create: ->
@@ -173,21 +201,35 @@ class @KnockoutModel
 
     # (static) Fetch by model ID using the "show" URL
     @show: ->
-        __no_cache = new Date()
         [params,callback] = @__generate_request_parameters.apply(@,arguments)
-        params = $.extend(params,{foo: __no_cache})
-        RQ.add $.getJSON @__parse_url(@__urls["show"],params), params, (data) ->
-            callback(data) if typeof callback is "function"
-        , "rq_#{@name}_"+new Date()
+        isCache = params? and params["__cache"] is true
+        cached = @__cacheContainer.find("#{@name}#show", params) if isCache is true
+        if cached?
+            callback(cached.data) if typeof callback is "function"
+        else
+            delete params["__cache"]
+            tempParams = params
+            tempParams["__no_cache"] = new Date().getTime()
+            RQ.add $.getJSON @__parse_url(@__urls["show"],params), tempParams, (data) ->
+                @__cacheContainer.push({id: "#{@name}#show", params: params,data: data}) if isCache is true
+                callback(data) if typeof callback is "function"
+            , "rq_#{@name}_"+new Date()
 
     # (static) Fetch all using the "index" URL
     @index: ->
-        __no_cache = new Date()
         [params,callback] = @__generate_request_parameters.apply(@,arguments)
-        params = $.extend(params,{foo: __no_cache})
-        RQ.add $.getJSON @__parse_url(@__urls["index"],params), params, (data) ->
-            callback(data) if typeof callback is "function"
-        , "rq_#{@name}_"+new Date()
+        isCache = params? and params["__cache"] is true
+        cached = @__cacheContainer.find("#{@name}#index", params) if isCache is true
+        if cached?
+            callback(cached.data) if typeof callback is "function"
+        else
+            delete params["__cache"]
+            tempParams = params
+            tempParams["__no_cache"] = new Date().getTime()
+            RQ.add $.getJSON @__parse_url(@__urls["index"],params), tempParams, (data) ->
+                @__cacheContainer.push({id: "#{@name}#index", params: params,data: data}) if isCache is true
+                callback(data) if typeof callback is "function"
+            , "rq_#{@name}_"+new Date()
 
     # (static) Abort all requests of this model
     @killAllRequests: ->

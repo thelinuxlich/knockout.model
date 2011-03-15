@@ -19,6 +19,7 @@ Date: Fri Mar 04 14:00:29 2011 -0300
 * This plugin was created with Coffeescript class approach, so you should use it too or you'll have to write a lot of ugly javascript
 * Override the __urls attribute to set your RESTful routes
 * Override the __defaults attribute to set default values on model instance
+* You can pass {__cache: true} to index() and show() alongside other request parameters to search local cache before triggering an AJAX request
 
 ## Model Methods
 * obj.get(attr) - Gets the attribute value(whether observable or not)
