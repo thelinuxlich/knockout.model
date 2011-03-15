@@ -12,11 +12,13 @@ ko.utils.unescapeHtml = (str) ->
 # Base model
 class @KnockoutModel
 
-    # Remember to call super(defaults,urls) on your models constructor
-    constructor: (defaults,urls) ->
-        @__defaults = if typeof defaults is "object" then defaults else {}
-        @__urls = if typeof urls is "object" then urls else {}
-        @set(@__defaults)
+    # Override these static values on your model
+    @__urls: {}
+    @__defaults: {}
+
+    # Sets default values on initialization
+    constructor: ->
+        @set(@constructor.__defaults)
 
     # Gets an attribute value(observable or not)
     get: (attr) ->
@@ -32,18 +34,24 @@ class @KnockoutModel
                 @[i] = if typeof item is "string" and item.match(/^&[^\s]*;$/) then ko.utils.unescapeHtml(item) else item
         @
 
+    # (static) Returns an array of objects using the data param(another array of data)
+    @createCollection: (data) ->
+        collection = []
+        for item in data
+            collection.push new(@).set(item)
+        collection
+
     # Clear all attributes and set default values
     clear: ->
         values = {}
         for own i,item of @
-            if i isnt "__defaults" and i isnt "__urls"
-                switch(typeof @get(i))
-                    when "string" then values[i] = (if @__defaults[i] isnt undefined then @__defaults[i] else "")
-                    when "number" then values[i] = (if @__defaults[i] isnt undefined then @__defaults[i] else 0)
-                    when "boolean" then values[i] = (if @__defaults[i] isnt undefined then @__defaults[i] else false)
-                    when "object"
-                        if toString.call() is "[object Array]"
-                            values[i] = (if @__defaults[i] isnt undefined then @__defaults[i] else [])
+            switch(typeof @get(i))
+                when "string" then values[i] = (if @constructor.__defaults[i] isnt undefined then @constructor.__defaults[i] else "")
+                when "number" then values[i] = (if @constructor.__defaults[i] isnt undefined then @constructor.__defaults[i] else 0)
+                when "boolean" then values[i] = (if @constructor.__defaults[i] isnt undefined then @constructor.__defaults[i] else false)
+                when "object"
+                    if toString.call() is "[object Array]"
+                        values[i] = (if @constructor.__defaults[i] isnt undefined then @constructor.__defaults[i] else [])
         @set(values)
 
     # Convert whole model to JSON, adds a random attribute to avoid IE issues with GET requests
@@ -57,12 +65,10 @@ class @KnockoutModel
         ko.toJS(temp)
 
     # Clones the model without 'private' attributes
-    clone: (args) ->
+    clone: (args = {}) ->
         temp = {}
-        args = args or {}
-        options = $.extend({"__defaults": false,"__urls": false},args)
         for own i of @
-            if options[i] is true or options[i] is undefined
+            if args[i] is true or args[i] is undefined
                 temp[i] = @get(i)
         temp
 
@@ -85,7 +91,7 @@ class @KnockoutModel
     # Helper for all standard request methods
     # First parameter is a object containing additional parameters to send via AJAX
     # Second parameter is a callback to execute after request is finished
-    __generate_request_parameters: ->
+    @__generate_request_parameters: ->
         params = {}
         callback = null
         if typeof arguments[0] is "function"
@@ -97,54 +103,93 @@ class @KnockoutModel
         [params,callback]
 
     # parses an url(Sinatra-like style with :parameters)
-    __parse_url: (url) ->
-      params = url.match /:[a-zA-Z0-9_]+/
-      if params.length > 0
-        url.replace param,@get(param.substring(1)) for param in params
-      url
+    @__parse_url: (url,params) ->
+      fixed_params = url.match /:[a-zA-Z0-9_]+/
+      if fixed_params? and fixed_params.length > 0
+        url.replace fixed_param,params[fixed_param.substring(1)] for fixed_param in fixed_params
 
     # Starts an AJAX request to create the entity using the "create" URL
     create: ->
-        [params,callback] = @__generate_request_parameters.apply(@,arguments)
+        [params,callback] = @constructor.__generate_request_parameters.apply(@,arguments)
         params = $.extend(params,@toJS())
-        RQ.add $.post @__parse_url(@__urls["create"]), params, (data) ->
+        RQ.add $.post @constructor.__parse_url(@constructor.__urls["create"],params), params, (data) ->
             callback(data) if typeof callback is "function"
         , "rq_#{@constructor.name}_"+new Date()
 
     # Starts an AJAX request to update the entity using the "update" URL
     update: ->
-        [params,callback] = @__generate_request_parameters.apply(@,arguments)
+        [params,callback] = @constructor.__generate_request_parameters.apply(@,arguments)
         params = $.extend(params,@toJS())
-        RQ.add $.post @__parse_url(@__urls["update"]), params, (data) ->
+        RQ.add $.post @constructor.__parse_url(@constructor.__urls["update"],params), params, (data) ->
             callback(data) if typeof callback is "function"
         , "rq_#{@constructor.name}_"+new Date()
 
     # Starts an AJAX request to remove the entity using the "destroy" URL
     destroy: ->
-        [params,callback] = @__generate_request_parameters.apply(@,arguments)
-        RQ.add $.post @__parse_url(@__urls["destroy"]), params, (data) ->
+        [params,callback] = @constructor.__generate_request_parameters.apply(@,arguments)
+        params = $.extend(params,@toJS())
+        RQ.add $.post @constructor.__parse_url(@constructor.__urls["destroy"],params), params, (data) ->
             callback(data) if typeof callback is "function"
         , "rq_#{@constructor.name}_"+new Date()
 
     # Fetch by model ID using the "show" URL
     show: ->
         __no_cache = new Date()
-        [params,callback] = @__generate_request_parameters.apply(@,arguments)
+        [params,callback] = @constructor.__generate_request_parameters.apply(@,arguments)
         params = $.extend(params,{foo: __no_cache})
-        RQ.add $.getJSON @__parse_url(@__urls["show"]), params, (data) ->
+        RQ.add $.getJSON @constructor.__parse_url(@constructor.__urls["show"],params), params, (data) ->
             callback(data) if typeof callback is "function"
         , "rq_#{@constructor.name}_"+new Date()
 
     # Fetch all using the "index" URL
     index: ->
         __no_cache = new Date()
-        [params,callback] = @__generate_request_parameters.apply(@,arguments)
+        [params,callback] = @constructor.__generate_request_parameters.apply(@,arguments)
         params = $.extend(params,{foo: __no_cache})
-        RQ.add $.getJSON @__parse_url(@__urls["index"]), params, (data) ->
+        RQ.add $.getJSON @constructor.__parse_url(@constructor.__urls["index"],params), params, (data) ->
             callback(data) if typeof callback is "function"
         , "rq_#{@constructor.name}_"+new Date()
 
-    # Abort all requests of this model
-    killAllRequests: ->
-        RQ.killByRegex /^rq_#{@constructor.name}_/
+    # (static) Starts an AJAX request to create the entity using the "create" URL
+    @create: ->
+        [params,callback] = @__generate_request_parameters.apply(@,arguments)
+        RQ.add $.post @__parse_url(@__urls["create"],params), params, (data) ->
+            callback(data) if typeof callback is "function"
+        , "rq_#{@name}_"+new Date()
+
+    # (static) Starts an AJAX request to update the entity using the "update" URL
+    @update: ->
+        [params,callback] = @__generate_request_parameters.apply(@,arguments)
+        RQ.add $.post @__parse_url(@__urls["update"],params), params, (data) ->
+            callback(data) if typeof callback is "function"
+        , "rq_#{@name}_"+new Date()
+
+    # (static) Starts an AJAX request to remove the entity using the "destroy" URL
+    @destroy: ->
+        [params,callback] = @__generate_request_parameters.apply(@,arguments)
+        RQ.add $.post @__parse_url(@__urls["destroy"],params), params, (data) ->
+            callback(data) if typeof callback is "function"
+        , "rq_#{@name}_"+new Date()
+
+    # (static) Fetch by model ID using the "show" URL
+    @show: ->
+        __no_cache = new Date()
+        [params,callback] = @__generate_request_parameters.apply(@,arguments)
+        params = $.extend(params,{foo: __no_cache})
+        RQ.add $.getJSON @__parse_url(@__urls["show"],params), params, (data) ->
+            callback(data) if typeof callback is "function"
+        , "rq_#{@name}_"+new Date()
+
+    # (static) Fetch all using the "index" URL
+    @index: ->
+        __no_cache = new Date()
+        [params,callback] = @__generate_request_parameters.apply(@,arguments)
+        params = $.extend(params,{foo: __no_cache})
+        RQ.add $.getJSON @__parse_url(@__urls["index"],params), params, (data) ->
+            callback(data) if typeof callback is "function"
+        , "rq_#{@name}_"+new Date()
+
+    # (static) Abort all requests of this model
+    @killAllRequests: ->
+        RQ.killByRegex /^rq_#{@name}_/
 

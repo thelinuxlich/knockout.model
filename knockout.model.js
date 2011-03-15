@@ -13,10 +13,10 @@
     }
   };
   this.KnockoutModel = (function() {
-    function KnockoutModel(defaults, urls) {
-      this.__defaults = typeof defaults === "object" ? defaults : {};
-      this.__urls = typeof urls === "object" ? urls : {};
-      this.set(this.__defaults);
+    KnockoutModel.__urls = {};
+    KnockoutModel.__defaults = {};
+    function KnockoutModel() {
+      this.set(this.constructor.__defaults);
     }
     KnockoutModel.prototype.get = function(attr) {
       return ko.utils.unwrapObservable(this[attr]);
@@ -34,28 +34,35 @@
       }
       return this;
     };
+    KnockoutModel.createCollection = function(data) {
+      var collection, item, _i, _len;
+      collection = [];
+      for (_i = 0, _len = data.length; _i < _len; _i++) {
+        item = data[_i];
+        collection.push(new this.set(item));
+      }
+      return collection;
+    };
     KnockoutModel.prototype.clear = function() {
       var i, item, values;
       values = {};
       for (i in this) {
         if (!__hasProp.call(this, i)) continue;
         item = this[i];
-        if (i !== "__defaults" && i !== "__urls") {
-          switch (typeof this.get(i)) {
-            case "string":
-              values[i] = (this.__defaults[i] !== void 0 ? this.__defaults[i] : "");
-              break;
-            case "number":
-              values[i] = (this.__defaults[i] !== void 0 ? this.__defaults[i] : 0);
-              break;
-            case "boolean":
-              values[i] = (this.__defaults[i] !== void 0 ? this.__defaults[i] : false);
-              break;
-            case "object":
-              if (toString.call() === "[object Array]") {
-                values[i] = (this.__defaults[i] !== void 0 ? this.__defaults[i] : []);
-              }
-          }
+        switch (typeof this.get(i)) {
+          case "string":
+            values[i] = (this.constructor.__defaults[i] !== void 0 ? this.constructor.__defaults[i] : "");
+            break;
+          case "number":
+            values[i] = (this.constructor.__defaults[i] !== void 0 ? this.constructor.__defaults[i] : 0);
+            break;
+          case "boolean":
+            values[i] = (this.constructor.__defaults[i] !== void 0 ? this.constructor.__defaults[i] : false);
+            break;
+          case "object":
+            if (toString.call() === "[object Array]") {
+              values[i] = (this.constructor.__defaults[i] !== void 0 ? this.constructor.__defaults[i] : []);
+            }
         }
       }
       return this.set(values);
@@ -71,16 +78,14 @@
       return ko.toJS(temp);
     };
     KnockoutModel.prototype.clone = function(args) {
-      var i, options, temp;
+      var i, temp;
+      if (args == null) {
+        args = {};
+      }
       temp = {};
-      args = args || {};
-      options = $.extend({
-        "__defaults": false,
-        "__urls": false
-      }, args);
       for (i in this) {
         if (!__hasProp.call(this, i)) continue;
-        if (options[i] === true || options[i] === void 0) {
+        if (args[i] === true || args[i] === void 0) {
           temp[i] = this.get(i);
         }
       }
@@ -108,7 +113,7 @@
         });
       }
     };
-    KnockoutModel.prototype.__generate_request_parameters = function() {
+    KnockoutModel.__generate_request_parameters = function() {
       var callback, params;
       params = {};
       callback = null;
@@ -122,22 +127,23 @@
       }
       return [params, callback];
     };
-    KnockoutModel.prototype.__parse_url = function(url) {
-      var param, params, _i, _len;
-      params = url.match(/:[a-zA-Z0-9_]+/);
-      if (params.length > 0) {
-        for (_i = 0, _len = params.length; _i < _len; _i++) {
-          param = params[_i];
-          url.replace(param, this.get(param.substring(1)));
+    KnockoutModel.__parse_url = function(url, params) {
+      var fixed_param, fixed_params, _i, _len, _results;
+      fixed_params = url.match(/:[a-zA-Z0-9_]+/);
+      if ((fixed_params != null) && fixed_params.length > 0) {
+        _results = [];
+        for (_i = 0, _len = fixed_params.length; _i < _len; _i++) {
+          fixed_param = fixed_params[_i];
+          _results.push(url.replace(fixed_param, params[fixed_param.substring(1)]));
         }
+        return _results;
       }
-      return url;
     };
     KnockoutModel.prototype.create = function() {
       var callback, params, _ref;
-      _ref = this.__generate_request_parameters.apply(this, arguments), params = _ref[0], callback = _ref[1];
+      _ref = this.constructor.__generate_request_parameters.apply(this, arguments), params = _ref[0], callback = _ref[1];
       params = $.extend(params, this.toJS());
-      return RQ.add($.post(this.__parse_url(this.__urls["create"]), params, function(data) {
+      return RQ.add($.post(this.constructor.__parse_url(this.constructor.__urls["create"], params), params, function(data) {
         if (typeof callback === "function") {
           return callback(data);
         }
@@ -145,9 +151,9 @@
     };
     KnockoutModel.prototype.update = function() {
       var callback, params, _ref;
-      _ref = this.__generate_request_parameters.apply(this, arguments), params = _ref[0], callback = _ref[1];
+      _ref = this.constructor.__generate_request_parameters.apply(this, arguments), params = _ref[0], callback = _ref[1];
       params = $.extend(params, this.toJS());
-      return RQ.add($.post(this.__parse_url(this.__urls["update"]), params, function(data) {
+      return RQ.add($.post(this.constructor.__parse_url(this.constructor.__urls["update"], params), params, function(data) {
         if (typeof callback === "function") {
           return callback(data);
         }
@@ -155,8 +161,9 @@
     };
     KnockoutModel.prototype.destroy = function() {
       var callback, params, _ref;
-      _ref = this.__generate_request_parameters.apply(this, arguments), params = _ref[0], callback = _ref[1];
-      return RQ.add($.post(this.__parse_url(this.__urls["destroy"]), params, function(data) {
+      _ref = this.constructor.__generate_request_parameters.apply(this, arguments), params = _ref[0], callback = _ref[1];
+      params = $.extend(params, this.toJS());
+      return RQ.add($.post(this.constructor.__parse_url(this.constructor.__urls["destroy"], params), params, function(data) {
         if (typeof callback === "function") {
           return callback(data);
         }
@@ -165,11 +172,11 @@
     KnockoutModel.prototype.show = function() {
       var callback, params, __no_cache, _ref;
       __no_cache = new Date();
-      _ref = this.__generate_request_parameters.apply(this, arguments), params = _ref[0], callback = _ref[1];
+      _ref = this.constructor.__generate_request_parameters.apply(this, arguments), params = _ref[0], callback = _ref[1];
       params = $.extend(params, {
         foo: __no_cache
       });
-      return RQ.add($.getJSON(this.__parse_url(this.__urls["show"]), params, function(data) {
+      return RQ.add($.getJSON(this.constructor.__parse_url(this.constructor.__urls["show"], params), params, function(data) {
         if (typeof callback === "function") {
           return callback(data);
         }
@@ -178,18 +185,71 @@
     KnockoutModel.prototype.index = function() {
       var callback, params, __no_cache, _ref;
       __no_cache = new Date();
-      _ref = this.__generate_request_parameters.apply(this, arguments), params = _ref[0], callback = _ref[1];
+      _ref = this.constructor.__generate_request_parameters.apply(this, arguments), params = _ref[0], callback = _ref[1];
       params = $.extend(params, {
         foo: __no_cache
       });
-      return RQ.add($.getJSON(this.__parse_url(this.__urls["index"]), params, function(data) {
+      return RQ.add($.getJSON(this.constructor.__parse_url(this.constructor.__urls["index"], params), params, function(data) {
         if (typeof callback === "function") {
           return callback(data);
         }
       }, ("rq_" + this.constructor.name + "_") + new Date()));
     };
-    KnockoutModel.prototype.killAllRequests = function() {
-      return RQ.killByRegex(/^rq_#{@constructor.name}_/);
+    KnockoutModel.create = function() {
+      var callback, params, _ref;
+      _ref = this.__generate_request_parameters.apply(this, arguments), params = _ref[0], callback = _ref[1];
+      return RQ.add($.post(this.__parse_url(this.__urls["create"], params), params, function(data) {
+        if (typeof callback === "function") {
+          return callback(data);
+        }
+      }, ("rq_" + this.name + "_") + new Date()));
+    };
+    KnockoutModel.update = function() {
+      var callback, params, _ref;
+      _ref = this.__generate_request_parameters.apply(this, arguments), params = _ref[0], callback = _ref[1];
+      return RQ.add($.post(this.__parse_url(this.__urls["update"], params), params, function(data) {
+        if (typeof callback === "function") {
+          return callback(data);
+        }
+      }, ("rq_" + this.name + "_") + new Date()));
+    };
+    KnockoutModel.destroy = function() {
+      var callback, params, _ref;
+      _ref = this.__generate_request_parameters.apply(this, arguments), params = _ref[0], callback = _ref[1];
+      return RQ.add($.post(this.__parse_url(this.__urls["destroy"], params), params, function(data) {
+        if (typeof callback === "function") {
+          return callback(data);
+        }
+      }, ("rq_" + this.name + "_") + new Date()));
+    };
+    KnockoutModel.show = function() {
+      var callback, params, __no_cache, _ref;
+      __no_cache = new Date();
+      _ref = this.__generate_request_parameters.apply(this, arguments), params = _ref[0], callback = _ref[1];
+      params = $.extend(params, {
+        foo: __no_cache
+      });
+      return RQ.add($.getJSON(this.__parse_url(this.__urls["show"], params), params, function(data) {
+        if (typeof callback === "function") {
+          return callback(data);
+        }
+      }, ("rq_" + this.name + "_") + new Date()));
+    };
+    KnockoutModel.index = function() {
+      var callback, params, __no_cache, _ref;
+      __no_cache = new Date();
+      _ref = this.__generate_request_parameters.apply(this, arguments), params = _ref[0], callback = _ref[1];
+      params = $.extend(params, {
+        foo: __no_cache
+      });
+      return RQ.add($.getJSON(this.__parse_url(this.__urls["index"], params), params, function(data) {
+        if (typeof callback === "function") {
+          return callback(data);
+        }
+      }, ("rq_" + this.name + "_") + new Date()));
+    };
+    KnockoutModel.killAllRequests = function() {
+      return RQ.killByRegex(/^rq_#{@name}_/);
     };
     return KnockoutModel;
   })();
