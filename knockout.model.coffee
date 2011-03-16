@@ -1,11 +1,73 @@
+# Intercept writable dependent observables with belongsTo
+Function.prototype.interceptRelation = (callback) ->
+        underlyingObservable = @
+        ko.dependentObservable
+            read: ->
+                if underlyingObservable.__newRelationObject is true
+                    underlyingObservable().refresh()
+                underlyingObservable
+            write: (value) -> callback.call underlyingObservable,value
+                
+# Intercept writable dependent observables with hasMany
+Function.prototype.interceptHasManyRelation = (callbackRead,callbackWrite) ->
+    underlyingObservable = @
+    obs = ko.dependentObservable
+        read: -> callbackRead.call(underlyingObservable)
+        write: (value) -> callbackWrite.call(underlyingObservable,value)
+
+    ko.utils.arrayForEach ["pop", "push", "reverse", "shift", "sort", "splice", "unshift"], (methodName) ->
+        obs[methodName] = ->
+            methodCallResult = underlyingObservable[methodName].apply(underlyingObservable(), arguments)
+            underlyingObservable.valueHasMutated()
+            methodCallResult
+
+    obs.slice = -> underlyingObservable[methodName].apply(underlyingObservable(), arguments)
+
+    obs.refresh = ->
+        obs.__newRelationObject = true
+        obs()
+
+    obs.remove = (valueOrPredicate) ->
+        underlyingArray = underlyingObservable()
+        remainingValues = []
+        removedValues = []
+        predicate = if typeof valueOrPredicate is "function" then valueOrPredicate else (value) -> value is valueOrPredicate
+        for i in [0..underlyingArray.length -1]
+            value = underlyingArray[i]
+            if (!predicate(value))
+                remainingValues.push(value)
+            else
+                removedValues.push(value)
+        underlyingObservable(remainingValues)
+        removedValues
+
+    obs.removeAll = (arrayOfValues) ->
+        # If you passed zero args, we remove everything
+        if (arrayOfValues is undefined) 
+            allValues = underlyingObservable()
+            underlyingObservable([])
+            return allValues
+
+        # If you passed an arg, we interpret it as an array of entries to remove
+        if (!arrayOfValues)
+            return []
+        elements = underlyingObservable.remove (value) ->
+            ko.utils.arrayIndexOf(arrayOfValues, value) >= 0
+        elements
+
+    obs.indexOf = (item) ->
+        underlyingArray = underlyingObservable()
+        ko.utils.arrayIndexOf(underlyingArray, item)
+
 # Cache implementation using the IdentityMap pattern
 ko.utils.IdentityMap = ->
 
     #Simple object comparison by value
-    this.find = (id,params) ->
+    @find = (id,params) ->
         $.grep(@,(d) ->
             d.id is id and ko.utils.stringifyJson(d.params) is ko.utils.stringifyJson(params)
         )[0]
+    @
 ko.utils.IdentityMap.prototype = new Array()
 
 # Helper function
@@ -40,17 +102,66 @@ class @KnockoutModel
     set: (args) ->
         for own i,item of args
             if ko.isWriteableObservable(@[i])
-                @[i](if typeof item is "string" and item.match(/^&[^\s]*;$/) then ko.utils.unescapeHtml(item) else item)
+                if @[i].__fromRelationship is true
+                    obj = @[i]()
+                    if toString.call(obj) is "[object Array]"
+                        @[i](i)
+                    else
+                        obj().set item
+                else
+                    @[i](if typeof item is "string" and item.match(/^&[^\s]*;$/) then ko.utils.unescapeHtml(item) else item)
             else if @[i] isnt undefined
                 @[i] = if typeof item is "string" and item.match(/^&[^\s]*;$/) then ko.utils.unescapeHtml(item) else item
+
+        @__newRelationObject = false if @__fromRelationship is true and @validate() is true
         @
 
+    # returns an attribute containing the owner in this relation
+    belongsTo: (relationName,args) ->
+        args = args or {}
+        if !args["class"]?
+            args["class"] = relationName.charAt(0).toUpperCase() + relationName.slice(1)
+        obj_owner = eval("new #{args['class']}()")
+        that = @
+        @[relationName] = ko.observable(obj_owner).interceptRelation (value) ->
+            @().set(value)
+        @[relationName].__fromRelationship = true
+        @[relationName].__newRelationObject = true
+
+    # returns an attribute containing the array of children in this relation
+    hasMany: (relationName,args) ->
+        args = args or {}
+        if !args["class"]?
+            args["class"] = relationName.charAt(0).toUpperCase() + relationName.slice(1)
+        obj_child = eval(args['class'])
+        that = @
+        @[relationName] = ko.observable([]).interceptHasManyRelation ->
+            if that[relationName].__newRelationObject = true and that.isNew() is false
+                params = {}
+                params[that.construtor.name.toLowerCase()+"_id"] = that.get("id")
+                obj_child.index params, (response) ->
+                    if response?
+                        that[relationName] obj_child.createCollection response,(item) ->
+                            item.__relationLink = that[relationName]
+                    that[relationName].__newRelationObject = false
+            else
+                @
+        , (value) ->
+            @ $.map value, (i,item) ->
+                item.__relationLink = that[relationName]
+        @[relationName].__childObject = obj_child
+        @[relationName].__fromRelationship = true
+        @[relationName].__newRelationObject = true
+
     # (static) Returns an array of objects using the data param(another array of data)
-    @createCollection: (data) ->
+    @createCollection: (data,callback) ->
         collection = []
         for item in data
             obj = new @
-            obj.set(item)
+            if typeof callback is "function"
+                obj.set(callback(item))
+            else
+                obj.set(item)
             collection.push(obj)
         collection
 
@@ -63,9 +174,20 @@ class @KnockoutModel
                 when "number" then values[i] = (if @constructor.__defaults[i] isnt undefined then @constructor.__defaults[i] else 0)
                 when "boolean" then values[i] = (if @constructor.__defaults[i] isnt undefined then @constructor.__defaults[i] else false)
                 when "object"
-                    if toString.call() is "[object Array]"
+                    if @[i].__fromRelationship is true
+                        obj = @get(i)
+                        if toString.call(obj) is "[object Array]"
+                            values[i] = []
+                        else
+                            values[i] = null
+                    else if toString.call(@get(i)) is "[object Array]"
                         values[i] = (if @constructor.__defaults[i] isnt undefined then @constructor.__defaults[i] else [])
         @set(values)
+
+    # Refreshes model data calling show()
+    refresh: ->
+        @show {id: @get("id")}, (data) ->
+            @set(data)
 
     # Convert whole model to JSON, adds a random attribute to avoid IE issues with GET requests
     toJSON: (options) ->
@@ -79,6 +201,7 @@ class @KnockoutModel
 
     # Clones the model without 'private' attributes
     clone: (args = {}) ->
+        args = $.extend({"__relationLink": false,"__newRelationObject": false,"__fromRelationship": false,"__childObject": false},args)
         temp = {}
         for own i of @
             if args[i] is true or args[i] is undefined
@@ -143,6 +266,9 @@ class @KnockoutModel
         [params,callback] = @constructor.__generate_request_parameters.apply(@,arguments)
         params = $.extend(params,@toJS())
         RQ.add $.post @constructor.__parse_url(@constructor.__urls["destroy"],params), params, (data) ->
+            if data? and data.status is "SUCCESS" and @__relationLink?
+                @__relationLink.remove (item) ->
+                    item.id is @get("id")
             callback(data) if typeof callback is "function"
         , "rq_#{@constructor.name}_"+new Date()
 
@@ -150,12 +276,12 @@ class @KnockoutModel
     show: ->
         [params,callback] = @constructor.__generate_request_parameters.apply(@,arguments)
         isCache = params? and params["__cache"] is true
-        cached = @constructor.__cacheContainer.find("#{@name}#show", params) if isCache is true
+        delete params["__cache"] if isCache is true
+        cached = @constructor.__cacheContainer.find("#{@constructor.name}#show", params) if isCache is true
         if cached?
             callback(cached.data) if typeof callback is "function"
         else
-            delete params["__cache"]
-            tempParams = params
+            tempParams = $.extend {},params
             tempParams["__no_cache"] = new Date().getTime()
             RQ.add $.getJSON @constructor.__parse_url(@construtor.__urls["show"],params), tempParams, (data) ->
                 @constructor.__cacheContainer.push({id: "#{@constructor.name}#show", params: params,data: data}) if isCache is true
@@ -166,12 +292,12 @@ class @KnockoutModel
     index: ->
         [params,callback] = @constructor.__generate_request_parameters.apply(@,arguments)
         isCache = params? and params["__cache"] is true
-        cached = @constructor.__cacheContainer.find("#{@name}#index", params) if isCache is true
+        delete params["__cache"] if isCache is true
+        cached = @constructor.__cacheContainer.find("#{@constructor.name}#index", params) if isCache is true
         if cached?
             callback(cached.data) if typeof callback is "function"
         else
-            delete params["__cache"]
-            tempParams = params
+            tempParams = $.extend {},params
             tempParams["__no_cache"] = new Date().getTime()
             RQ.add $.getJSON @constructor.__parse_url(@constructor.__urls["index"],params), tempParams, (data) ->
                 @constructor.__cacheContainer.push({id: "#{@constructor.name}#index", params: params,data: data}) if isCache is true
@@ -203,14 +329,14 @@ class @KnockoutModel
     @show: ->
         [params,callback] = @__generate_request_parameters.apply(@,arguments)
         isCache = params? and params["__cache"] is true
+        delete params["__cache"] if isCache is true
         cached = @__cacheContainer.find("#{@name}#show", params) if isCache is true
         if cached?
             callback(cached.data) if typeof callback is "function"
         else
-            delete params["__cache"]
-            tempParams = params
+            tempParams = $.extend {},params
             tempParams["__no_cache"] = new Date().getTime()
-            RQ.add $.getJSON @__parse_url(@__urls["show"],params), tempParams, (data) ->
+            RQ.add $.getJSON @__parse_url(@__urls["show"],params), tempParams, (data) =>
                 @__cacheContainer.push({id: "#{@name}#show", params: params,data: data}) if isCache is true
                 callback(data) if typeof callback is "function"
             , "rq_#{@name}_"+new Date()
@@ -219,15 +345,15 @@ class @KnockoutModel
     @index: ->
         [params,callback] = @__generate_request_parameters.apply(@,arguments)
         isCache = params? and params["__cache"] is true
+        delete params["__cache"] if isCache is true
         cached = @__cacheContainer.find("#{@name}#index", params) if isCache is true
         if cached?
             callback(cached.data) if typeof callback is "function"
         else
-            delete params["__cache"]
-            tempParams = params
+            tempParams = $.extend {},params
             tempParams["__no_cache"] = new Date().getTime()
-            RQ.add $.getJSON @__parse_url(@__urls["index"],params), tempParams, (data) ->
-                @__cacheContainer.push({id: "#{@name}#index", params: params,data: data}) if isCache is true
+            RQ.add $.getJSON @__parse_url(@__urls["index"],params), tempParams, (data) =>
+                @__cacheContainer.push {id: "#{@name}#index", params: params,data: data} if isCache is true
                 callback(data) if typeof callback is "function"
             , "rq_#{@name}_"+new Date()
 

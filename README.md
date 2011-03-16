@@ -24,6 +24,7 @@ Date: Fri Mar 04 14:00:29 2011 -0300
 ## Model Methods
 * obj.get(attr) - Gets the attribute value(whether observable or not)
 * obj.set(object_with_values) - Sets attribute(s) value(s)(whether observable or not)
+* obj.refresh() - Loads model data from show url and sets itself with it
 * obj.clear() - Clears all attributes(whether observable or not) and sets default values after
 * obj.toJSON() - Converts whole model to JSON format
 * obj.toJS() - Converts whole model to JS object representation
@@ -36,12 +37,16 @@ Date: Fri Mar 04 14:00:29 2011 -0300
 * obj.show(extra_params) - Fetches a model data(usually based on id) from the server, using the "show" key from the url object
 * obj.index(extra_params) - Fetches all model data from the server, using the "index" key from the url object
 * Model.killAllRequests() - Aborts all AJAX requests of this model (static method)
-* Model.createCollection(data) - Creates a collection of model objects instantiating one-by-one with the data array (static)
+* Model.createCollection(data,transformFunction) - Creates a collection of model objects instantiating one-by-one with the data array, second parameter is a callback for customizing each item from data (static)
 * Model.create(params) - Same as obj.create() but static
 * Model.update(params) - Same as obj.update() but static
 * Model.destroy(params) - Same as obj.destroy() but static
 * Model.show(params) - Same as obj.show() but static (Ex.: Employee.show({id: 1}))
 * Model.index(params) - Same as obj.index() but static
+
+## Constructor methods
+* @belongsTo(relationName, optionalArgs) - Sets 1-1 relationship with another model, creating an observable attribute with relationName and by convention instantiating a class with the relationName capitalized(you can override this passing {class: 'another_name'} as second argument)
+* @hasMany(relationName, optionalArgs) - Sets 1-* relationship with another model, creating an observable array attribute with relationName and by convention instantiating a class with the relationName capitalized(you can override this passing {class: 'another_name'} as second argument)
 
 ## Example(see docs for more details):
     class @Employee extends KnockoutModel
@@ -63,6 +68,7 @@ Date: Fri Mar 04 14:00:29 2011 -0300
             @birth_date = ko.observable ""
             @address = ko.observable ""
             @phone = ko.observable ""
+            @belongsTo "department" # defaults to class "Department". It is important that Department has a validate method, otherwise it will not load the relationship
             super() # if you want the @__defaults applied to your model instance, call super() or @set @constructor.__defaults
 
         validate: ->
