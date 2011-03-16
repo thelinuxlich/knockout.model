@@ -63,6 +63,7 @@ Date: Fri Mar 04 14:00:29 2011 -0300
             @birth_date = ko.observable ""
             @address = ko.observable ""
             @phone = ko.observable ""
+            super() # if you want the @__defaults applied to your model instance, call super() or @set @constructor.__defaults
 
         validate: ->
             @name() isnt "" and @surname() isnt "" and @birth_date() isnt "" and
