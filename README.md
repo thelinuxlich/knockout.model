@@ -53,9 +53,9 @@ Date: Fri Mar 04 14:00:29 2011 -0300
         @__urls:
                 "index": "http://#{window.location.host}/employees"
                 "show": "http://#{window.location.host}/employees/:id"
-                "post": "http://#{window.location.host}/employees/post"
-                "put": "http://#{window.location.host}/employees/put"
-                "delete": "http://#{window.location.host}/employees/delete"
+                "create": "http://#{window.location.host}/employees/post"
+                "update": "http://#{window.location.host}/employees/put"
+                "destroy": "http://#{window.location.host}/employees/delete"
 
         @__defaults:
                 "name": "John Doe"
