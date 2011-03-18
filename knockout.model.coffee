@@ -87,6 +87,7 @@ class @KnockoutModel
     # Override these static values on your model
     @__urls: {}
     @__defaults: {}
+    @__transientParameters: []
     @__cacheContainer: new ko.utils.IdentityMap()
 
     # Sets default values on initialization
@@ -201,7 +202,10 @@ class @KnockoutModel
 
     # Clones the model without 'private' attributes
     clone: (args = {}) ->
-        args = $.extend({"__relationLink": false,"__newRelationObject": false,"__fromRelationship": false,"__childObject": false},args)
+        transientAttributes = {"__relationLink": false,"__newRelationObject": false,"__fromRelationship": false,"__childObject": false}
+        for param in @constructor.__transientParameters
+            transientAttributes[param] = false
+        args = $.extend(transientAttributes,args)
         temp = {}
         for own i of @
             if args[i] is true or args[i] is undefined
@@ -249,28 +253,31 @@ class @KnockoutModel
     create: ->
         [params,callback] = @constructor.__generate_request_parameters.apply(@,arguments)
         params = $.extend(params,@toJS())
-        RQ.add $.post @constructor.__parse_url(@constructor.__urls["create"],params), params, (data) ->
-            callback(data) if typeof callback is "function"
-        , "rq_#{@constructor.name}_"+new Date()
+        RQ.add ($.post @constructor.__parse_url(@constructor.__urls["create"],params), params, (data) ->
+                callback(data) if typeof callback is "function"
+            , "json"
+        ), "rq_#{@constructor.name}_"+new Date()
 
     # Starts an AJAX request to update the entity using the "update" URL
     update: ->
         [params,callback] = @constructor.__generate_request_parameters.apply(@,arguments)
         params = $.extend(params,@toJS())
-        RQ.add $.post @constructor.__parse_url(@constructor.__urls["update"],params), params, (data) ->
-            callback(data) if typeof callback is "function"
-        , "rq_#{@constructor.name}_"+new Date()
+        RQ.add ($.post @constructor.__parse_url(@constructor.__urls["update"],params), params, (data) ->
+                callback(data) if typeof callback is "function"
+            , "json"
+        ), "rq_#{@constructor.name}_"+new Date()
 
     # Starts an AJAX request to remove the entity using the "destroy" URL
     destroy: ->
         [params,callback] = @constructor.__generate_request_parameters.apply(@,arguments)
         params = $.extend(params,@toJS())
-        RQ.add $.post @constructor.__parse_url(@constructor.__urls["destroy"],params), params, (data) ->
-            if data? and data.status is "SUCCESS" and @__relationLink?
-                @__relationLink.remove (item) ->
-                    item.id is @get("id")
-            callback(data) if typeof callback is "function"
-        , "rq_#{@constructor.name}_"+new Date()
+        RQ.add ($.post @constructor.__parse_url(@constructor.__urls["destroy"],params), params, (data) ->
+                if data? and data.status is "SUCCESS" and @__relationLink?
+                    @__relationLink.remove (item) ->
+                        item.id is @get("id")
+                callback(data) if typeof callback is "function"
+            , "json"    
+        ), "rq_#{@constructor.name}_"+new Date()
 
     # Fetch by model ID using the "show" URL
     show: ->
@@ -307,23 +314,26 @@ class @KnockoutModel
     # (static) Starts an AJAX request to create the entity using the "create" URL
     @create: ->
         [params,callback] = @__generate_request_parameters.apply(@,arguments)
-        RQ.add $.post @__parse_url(@__urls["create"],params), params, (data) ->
-            callback(data) if typeof callback is "function"
-        , "rq_#{@name}_"+new Date()
+        RQ.add ($.post @__parse_url(@__urls["create"],params), params, (data) ->
+                callback(data) if typeof callback is "function"
+            , "json"
+        ), "rq_#{@name}_"+new Date()
 
     # (static) Starts an AJAX request to update the entity using the "update" URL
     @update: ->
         [params,callback] = @__generate_request_parameters.apply(@,arguments)
-        RQ.add $.post @__parse_url(@__urls["update"],params), params, (data) ->
-            callback(data) if typeof callback is "function"
-        , "rq_#{@name}_"+new Date()
+        RQ.add ($.post @__parse_url(@__urls["update"],params), params, (data) ->
+                callback(data) if typeof callback is "function"
+            , "json"
+        ), "rq_#{@name}_"+new Date()
 
     # (static) Starts an AJAX request to remove the entity using the "destroy" URL
     @destroy: ->
         [params,callback] = @__generate_request_parameters.apply(@,arguments)
-        RQ.add $.post @__parse_url(@__urls["destroy"],params), params, (data) ->
-            callback(data) if typeof callback is "function"
-        , "rq_#{@name}_"+new Date()
+        RQ.add ($.post @__parse_url(@__urls["destroy"],params), params, (data) ->
+                callback(data) if typeof callback is "function"
+            , "json"
+        ), "rq_#{@name}_"+new Date()
 
     # (static) Fetch by model ID using the "show" URL
     @show: ->

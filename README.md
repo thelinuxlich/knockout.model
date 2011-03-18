@@ -19,6 +19,7 @@ Date: Fri Mar 04 14:00:29 2011 -0300
 * This plugin was created with Coffeescript class approach, so you should use it too or you'll have to write a lot of ugly javascript
 * Override the __urls attribute to set your RESTful routes
 * Override the __defaults attribute to set default values on model instance
+* Override the __transientParameters attribute to set values that will not save(convert to json or to js)
 * You can pass {__cache: true} to index() and show() alongside other request parameters to search local cache before triggering an AJAX request
 
 ## Model Methods
@@ -60,6 +61,9 @@ Date: Fri Mar 04 14:00:29 2011 -0300
         @__defaults:
                 "name": "John Doe"
 
+        # We don't want to send status_text attribute to the server
+        @__transientParameters: ["status_text"]
+
         constructor: ->
             @id = ko.observable ""
             @name = ko.observable ""
@@ -69,6 +73,8 @@ Date: Fri Mar 04 14:00:29 2011 -0300
             @address = ko.observable ""
             @phone = ko.observable ""
             @belongsTo "department" # defaults to class "Department". It is important that Department has a validate method, otherwise it will not load the relationship
+            @status = ko.observable "E"
+            @status_text = ko.dependentObservable(-> if @status() is "E" then "enabled" else "disabled"), @
             super() # if you want the @__defaults applied to your model instance, call super() or @set @constructor.__defaults
 
         validate: ->

@@ -105,6 +105,7 @@
   this.KnockoutModel = (function() {
     KnockoutModel.__urls = {};
     KnockoutModel.__defaults = {};
+    KnockoutModel.__transientParameters = [];
     KnockoutModel.__cacheContainer = new ko.utils.IdentityMap();
     function KnockoutModel() {
       this.set(this.constructor.__defaults);
@@ -248,16 +249,22 @@
       return ko.toJS(temp);
     };
     KnockoutModel.prototype.clone = function(args) {
-      var i, temp;
+      var i, param, temp, transientAttributes, _i, _len, _ref;
       if (args == null) {
         args = {};
       }
-      args = $.extend({
+      transientAttributes = {
         "__relationLink": false,
         "__newRelationObject": false,
         "__fromRelationship": false,
         "__childObject": false
-      }, args);
+      };
+      _ref = this.constructor.__transientParameters;
+      for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+        param = _ref[_i];
+        transientAttributes[param] = false;
+      }
+      args = $.extend(transientAttributes, args);
       temp = {};
       for (i in this) {
         if (!__hasProp.call(this, i)) continue;
@@ -322,7 +329,7 @@
         if (typeof callback === "function") {
           return callback(data);
         }
-      }, ("rq_" + this.constructor.name + "_") + new Date()));
+      }, "json"), ("rq_" + this.constructor.name + "_") + new Date());
     };
     KnockoutModel.prototype.update = function() {
       var callback, params, _ref;
@@ -332,7 +339,7 @@
         if (typeof callback === "function") {
           return callback(data);
         }
-      }, ("rq_" + this.constructor.name + "_") + new Date()));
+      }, "json"), ("rq_" + this.constructor.name + "_") + new Date());
     };
     KnockoutModel.prototype.destroy = function() {
       var callback, params, _ref;
@@ -347,7 +354,7 @@
         if (typeof callback === "function") {
           return callback(data);
         }
-      }, ("rq_" + this.constructor.name + "_") + new Date()));
+      }, "json"), ("rq_" + this.constructor.name + "_") + new Date());
     };
     KnockoutModel.prototype.show = function() {
       var cached, callback, isCache, params, tempParams, _ref;
@@ -418,7 +425,7 @@
         if (typeof callback === "function") {
           return callback(data);
         }
-      }, ("rq_" + this.name + "_") + new Date()));
+      }, "json"), ("rq_" + this.name + "_") + new Date());
     };
     KnockoutModel.update = function() {
       var callback, params, _ref;
@@ -427,7 +434,7 @@
         if (typeof callback === "function") {
           return callback(data);
         }
-      }, ("rq_" + this.name + "_") + new Date()));
+      }, "json"), ("rq_" + this.name + "_") + new Date());
     };
     KnockoutModel.destroy = function() {
       var callback, params, _ref;
@@ -436,7 +443,7 @@
         if (typeof callback === "function") {
           return callback(data);
         }
-      }, ("rq_" + this.name + "_") + new Date()));
+      }, "json"), ("rq_" + this.name + "_") + new Date());
     };
     KnockoutModel.show = function() {
       var cached, callback, isCache, params, tempParams, _ref;
