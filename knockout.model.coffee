@@ -1,64 +1,3 @@
-# Intercept writable dependent observables with belongsTo
-Function.prototype.interceptRelation = (callback) ->
-        underlyingObservable = @
-        ko.dependentObservable
-            read: ->
-                if underlyingObservable.__newRelationObject is true
-                    underlyingObservable().refresh()
-                underlyingObservable
-            write: (value) -> callback.call underlyingObservable,value
-                
-# Intercept writable dependent observables with hasMany
-Function.prototype.interceptHasManyRelation = (callbackRead,callbackWrite) ->
-    underlyingObservable = @
-    obs = ko.dependentObservable
-        read: -> callbackRead.call(underlyingObservable)
-        write: (value) -> callbackWrite.call(underlyingObservable,value)
-
-    ko.utils.arrayForEach ["pop", "push", "reverse", "shift", "sort", "splice", "unshift"], (methodName) ->
-        obs[methodName] = ->
-            methodCallResult = underlyingObservable[methodName].apply(underlyingObservable(), arguments)
-            underlyingObservable.valueHasMutated()
-            methodCallResult
-
-    obs.slice = -> underlyingObservable[methodName].apply(underlyingObservable(), arguments)
-
-    obs.refresh = ->
-        obs.__newRelationObject = true
-        obs()
-
-    obs.remove = (valueOrPredicate) ->
-        underlyingArray = underlyingObservable()
-        remainingValues = []
-        removedValues = []
-        predicate = if typeof valueOrPredicate is "function" then valueOrPredicate else (value) -> value is valueOrPredicate
-        for i in [0..underlyingArray.length -1]
-            value = underlyingArray[i]
-            if (!predicate(value))
-                remainingValues.push(value)
-            else
-                removedValues.push(value)
-        underlyingObservable(remainingValues)
-        removedValues
-
-    obs.removeAll = (arrayOfValues) ->
-        # If you passed zero args, we remove everything
-        if (arrayOfValues is undefined) 
-            allValues = underlyingObservable()
-            underlyingObservable([])
-            return allValues
-
-        # If you passed an arg, we interpret it as an array of entries to remove
-        if (!arrayOfValues)
-            return []
-        elements = underlyingObservable.remove (value) ->
-            ko.utils.arrayIndexOf(arrayOfValues, value) >= 0
-        elements
-
-    obs.indexOf = (item) ->
-        underlyingArray = underlyingObservable()
-        ko.utils.arrayIndexOf(underlyingArray, item)
-
 # Cache implementation using the IdentityMap pattern
 ko.utils.IdentityMap = ->
 
@@ -92,7 +31,13 @@ class @KnockoutModel
 
     # Sets default values on initialization
     constructor: ->
+        @__urls = @constructor.__urls
         @set(@constructor.__defaults)
+    
+    # Adds or modifies a route on instance and stactically
+    addRoute: (id,href) ->
+      @__urls[id] = href
+      @constructor.__urls[id] = href
 
     # Gets an attribute value(observable or not)
     get: (attr) ->
@@ -103,56 +48,65 @@ class @KnockoutModel
     set: (args) ->
         for own i,item of args
             if ko.isWriteableObservable(@[i])
-                if @[i].__fromRelationship is true
-                    obj = @[i]()
-                    if toString.call(obj) is "[object Array]"
-                        @[i](i)
-                    else
-                        obj().set item
-                else
-                    @[i](if typeof item is "string" and item.match(/^&[^\s]*;$/) then ko.utils.unescapeHtml(item) else item)
+                @[i](if typeof item is "string" and item.match(/&[^\s]*;/) then ko.utils.unescapeHtml(item) else item)
             else if @[i] isnt undefined
-                @[i] = if typeof item is "string" and item.match(/^&[^\s]*;$/) then ko.utils.unescapeHtml(item) else item
+                @[i] = if typeof item is "string" and item.match(/&[^\s]*;/) then ko.utils.unescapeHtml(item) else item
 
-        @__newRelationObject = false if @__fromRelationship is true and @validate() is true
         @
 
-    # returns an attribute containing the owner in this relation
-    belongsTo: (relationName,args) ->
-        args = args or {}
-        if !args["class"]?
-            args["class"] = relationName.charAt(0).toUpperCase() + relationName.slice(1)
-        obj_owner = eval("new #{args['class']}()")
-        that = @
-        @[relationName] = ko.observable(obj_owner).interceptRelation (value) ->
-            @().set(value)
-        @[relationName].__fromRelationship = true
-        @[relationName].__newRelationObject = true
+    # creates an action with HTTP POST
+    postAction: (routeName,options) ->
+        options = options or {}
+        @[routeName] = ->
+            [params,callback] = @constructor.__generate_request_parameters.apply(@,arguments)
+            params = $.extend(params,@toJS())
+            url = @constructor.__parse_url(@__urls[routeName],params)
+            RQ.add ($.post url, params, (data) ->
+                    callback(data) if typeof callback is "function"
+                , "json"
+            ), "rq_#{@constructor.name}_"+new Date()
+        if options["static"] is true
+            @constructor[routeName] = ->
+                [params,callback] = @constructor.__generate_request_parameters.apply(@,arguments)
+                url = @__parse_url(@__urls[routeName],params)
+                RQ.add ($.post url, params, (data) ->
+                        callback(data) if typeof callback is "function"
+                    , "json"
+                ), "rq_#{@name}_"+new Date()
 
-    # returns an attribute containing the array of children in this relation
-    hasMany: (relationName,args) ->
-        args = args or {}
-        if !args["class"]?
-            args["class"] = relationName.charAt(0).toUpperCase() + relationName.slice(1)
-        obj_child = eval(args['class'])
-        that = @
-        @[relationName] = ko.observable([]).interceptHasManyRelation ->
-            if that[relationName].__newRelationObject = true and that.isNew() is false
-                params = {}
-                params[that.construtor.name.toLowerCase()+"_id"] = that.get("id")
-                obj_child.index params, (response) ->
-                    if response?
-                        that[relationName] obj_child.createCollection response,(item) ->
-                            item.__relationLink = that[relationName]
-                    that[relationName].__newRelationObject = false
+    # creates an action with HTTP GET
+    getAction: (routeName,options) ->
+        options = options or {}
+        @[routeName] = ->
+            [params,callback] = @constructor.__generate_request_parameters.apply(@,arguments)
+            isCache = params? and params["__cache"] is true
+            delete params["__cache"] if isCache is true
+            cached = @constructor.__cacheContainer.find("#{@constructor.name}##{routeName}", params) if isCache is true
+            if cached?
+                callback(cached.data) if typeof callback is "function"
             else
-                @
-        , (value) ->
-            @ $.map value, (i,item) ->
-                item.__relationLink = that[relationName]
-        @[relationName].__childObject = obj_child
-        @[relationName].__fromRelationship = true
-        @[relationName].__newRelationObject = true
+                tempParams = $.extend {},params
+                tempParams["__no_cache"] = new Date().getTime()
+                url = @constructor.__parse_url(@__urls[routeName],tempParams)
+                RQ.add $.getJSON url, tempParams, (data) ->
+                    @constructor.__cacheContainer.push({id: "#{@constructor.name}##{routeName}", params: params,data: data}) if isCache is true
+                    callback(data) if typeof callback is "function"
+                , "rq_#{@constructor.name}_"+new Date()
+        if options["static"] is true
+            [params,callback] = @constructor.__generate_request_parameters.apply(@,arguments)
+            isCache = params? and params["__cache"] is true
+            delete params["__cache"] if isCache is true
+            cached = @__cacheContainer.find("#{@name}##{routeName}", params) if isCache is true
+            if cached?
+                callback(cached.data) if typeof callback is "function"
+            else
+                tempParams = $.extend {},params
+                tempParams["__no_cache"] = new Date().getTime()
+                url = @__parse_url(@__urls[routeName],tempParams)
+                RQ.add $.getJSON url, tempParams, (data) ->
+                    @__cacheContainer.push({id: "#{@name}##{routeName}", params: params,data: data}) if isCache is true
+                    callback(data) if typeof callback is "function"
+                , "rq_#{@name}_"+new Date()
 
     # (static) Returns an array of objects using the data param(another array of data)
     @createCollection: (data,callback) ->
@@ -175,20 +129,15 @@ class @KnockoutModel
                 when "number" then values[i] = (if @constructor.__defaults[i] isnt undefined then @constructor.__defaults[i] else 0)
                 when "boolean" then values[i] = (if @constructor.__defaults[i] isnt undefined then @constructor.__defaults[i] else false)
                 when "object"
-                    if @[i].__fromRelationship is true
-                        obj = @get(i)
-                        if toString.call(obj) is "[object Array]"
-                            values[i] = []
-                        else
-                            values[i] = null
-                    else if toString.call(@get(i)) is "[object Array]"
-                        values[i] = (if @constructor.__defaults[i] isnt undefined then @constructor.__defaults[i] else [])
+                    values[i] = (if @constructor.__defaults[i] isnt undefined then @constructor.__defaults[i] else [])
         @set(values)
 
     # Refreshes model data calling show()
-    refresh: ->
+    refresh: (callback) ->
         @show {id: @get("id")}, (data) ->
-            @set(data)
+            if data.status is "SUCCESS"
+                @set(data)
+            callback(data) if typeof callback is "function"
 
     # Convert whole model to JSON, adds a random attribute to avoid IE issues with GET requests
     toJSON: (options) ->
@@ -202,7 +151,7 @@ class @KnockoutModel
 
     # Clones the model without 'private' attributes
     clone: (args = {}) ->
-        transientAttributes = {"__relationLink": false,"__newRelationObject": false,"__fromRelationship": false,"__childObject": false}
+        transientAttributes = {}
         for param in @constructor.__transientParameters
             transientAttributes[param] = false
         args = $.extend(transientAttributes,args)
@@ -226,7 +175,8 @@ class @KnockoutModel
         if @validate() is true
             if @isNew() is true then @create.apply(@,arguments) else @update.apply(@,arguments)
         else
-            callback {status: "ERROR",message: "Invalid object"}
+            [params,callback] = @constructor.__generate_request_parameters.apply(@,arguments)
+            callback {status: "ERROR",message: "Invalid object"} if typeof callback is "function"
 
     # Helper for all standard request methods
     # First parameter is a object containing additional parameters to send via AJAX
@@ -244,16 +194,18 @@ class @KnockoutModel
 
     # parses an url(Sinatra-like style with :parameters)
     @__parse_url: (url,params) ->
-      fixed_params = url.match /:[a-zA-Z0-9_]+/
-      if fixed_params? and fixed_params.length > 0
-        url = url.replace fixed_param,params[fixed_param.substring(1)] for fixed_param in fixed_params
-      url
+        url.replace /:([a-zA-Z0-9_]+)/g, (match) ->
+            attr = match.substring(1)
+            value = param[attr]
+            delete param[attr]
+            value
 
     # Starts an AJAX request to create the entity using the "create" URL
     create: ->
         [params,callback] = @constructor.__generate_request_parameters.apply(@,arguments)
         params = $.extend(params,@toJS())
-        RQ.add ($.post @constructor.__parse_url(@constructor.__urls["create"],params), params, (data) ->
+        url = @constructor.__parse_url(@__urls["create"],params)
+        RQ.add ($.post url, params, (data) ->
                 callback(data) if typeof callback is "function"
             , "json"
         ), "rq_#{@constructor.name}_"+new Date()
@@ -262,7 +214,8 @@ class @KnockoutModel
     update: ->
         [params,callback] = @constructor.__generate_request_parameters.apply(@,arguments)
         params = $.extend(params,@toJS())
-        RQ.add ($.post @constructor.__parse_url(@constructor.__urls["update"],params), params, (data) ->
+        url = @constructor.__parse_url(@__urls["update"],params)
+        RQ.add ($.post url, params, (data) ->
                 callback(data) if typeof callback is "function"
             , "json"
         ), "rq_#{@constructor.name}_"+new Date()
@@ -271,12 +224,9 @@ class @KnockoutModel
     destroy: ->
         [params,callback] = @constructor.__generate_request_parameters.apply(@,arguments)
         params = $.extend(params,@toJS())
-        RQ.add ($.post @constructor.__parse_url(@constructor.__urls["destroy"],params), params, (data) ->
-                if data? and data.status is "SUCCESS" and @__relationLink?
-                    @__relationLink.remove (item) ->
-                        item.id is @get("id")
+        RQ.add ($.post @constructor.__parse_url(@__urls["destroy"],params), params, (data) ->
                 callback(data) if typeof callback is "function"
-            , "json"    
+            , "json"
         ), "rq_#{@constructor.name}_"+new Date()
 
     # Fetch by model ID using the "show" URL
@@ -290,7 +240,7 @@ class @KnockoutModel
         else
             tempParams = $.extend {},params
             tempParams["__no_cache"] = new Date().getTime()
-            RQ.add $.getJSON @constructor.__parse_url(@construtor.__urls["show"],params), tempParams, (data) ->
+            RQ.add $.getJSON @constructor.__parse_url(@__urls["show"],params), tempParams, (data) ->
                 @constructor.__cacheContainer.push({id: "#{@constructor.name}#show", params: params,data: data}) if isCache is true
                 callback(data) if typeof callback is "function"
             , "rq_#{@constructor.name}_"+new Date()
@@ -306,7 +256,7 @@ class @KnockoutModel
         else
             tempParams = $.extend {},params
             tempParams["__no_cache"] = new Date().getTime()
-            RQ.add $.getJSON @constructor.__parse_url(@constructor.__urls["index"],params), tempParams, (data) ->
+            RQ.add $.getJSON @constructor.__parse_url(@__urls["index"],params), tempParams, (data) ->
                 @constructor.__cacheContainer.push({id: "#{@constructor.name}#index", params: params,data: data}) if isCache is true
                 callback(data) if typeof callback is "function"
             , "rq_#{@constructor.name}_"+new Date()
@@ -370,4 +320,3 @@ class @KnockoutModel
     # (static) Abort all requests of this model
     @killAllRequests: ->
         RQ.killByRegex /^rq_#{@name}_/
-
