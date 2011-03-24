@@ -20,15 +20,15 @@ Date: Fri Mar 04 14:00:29 2011 -0300
 * Override the __urls attribute to set your RESTful routes
 * Override the __defaults attribute to set default values on model instance
 * Override the __transientParameters attribute to set values that will not save(convert to json or to js)
-* You can pass {__cache: true} to index() and show() alongside other request parameters to search local cache before triggering an AJAX request
+* You can pass {__cache: true} to index(),show() or doGet() alongside other request parameters to search local cache before triggering an AJAX request
 
 ## Model Methods
 * obj.get(attr) - Gets the attribute value(whether observable or not)
 * obj.set(object_with_values) - Sets attribute(s) value(s)(whether observable or not)
 * obj.refresh(callback) - Loads model data from show url and sets itself with it
 * obj.clear() - Clears all attributes(whether observable or not) and sets default values after
-* obj.toJSON() - Converts whole model to JSON format
-* obj.toJS() - Converts whole model to JS object representation
+* obj.toJSON(obj) - Converts whole model to JSON format, optional parameter containing an object with attributes to be serialized(Example: {id: true,name:false})
+* obj.toJS(obj) - Converts whole model to JS object representation, optional parameter containing an object with attributes to be serialized(Example: {id: true,name:false})
 * obj.isNew() - True if model.id is empty, false if isn't
 * obj.validate() - Implement your own function returning true or false
 * obj.save(params,callback) - Creates or updates a model instance, calling validate() before
@@ -37,11 +37,11 @@ Date: Fri Mar 04 14:00:29 2011 -0300
 * obj.destroy(params,callback) - Deletes an existing model instance on the server, using the "destroy" key from the url object
 * obj.show(params,callback) - Fetches a model data(usually based on id) from the server, using the "show" key from the url object
 * obj.index(params,callback) - Fetches all model data from the server, using the "index" key from the url object
-* obj.addRoute(id,href) - Adds/modifies a route on __urls object
-* obj.getAction(id,options) - Creates a new GET action with the same pattern of the standard routes. First parameter is the __urls key of the route, options are:
-** static: true/false - creates the action as static too
-* obj.getAction(id,options) - Creates a new POST action with the same pattern of the standard routes. First parameter is the __urls key of the route, options are:
-** static: true/false - creates the action as static too
+* obj.addRoute(id,href,static = true) - Adds/modifies a route on __urls object. Third parameter also adds the route to static routes.
+* obj.doGet(route_id_or_url,params,callback) - Creates a new AJAX GET request with the same pattern of the standard routes.
+* obj.doPost(route_id_or_url,params,callback) - Creates a new AJAX POST request with the same pattern of the standard routes.
+* Model.doGet(route_id_or_url,params,callback) - Same as obj.doPost() but static
+* Model.doPost(route_id_or_url,params,callback) - Same as obj.doGet() but static
 * Model.killAllRequests() - Aborts all AJAX requests of this model (static method)
 * Model.createCollection(data,transformFunction) - Creates a collection of model objects instantiating one-by-one with the data array, second parameter is a callback for customizing each item from data (static)
 * Model.create(params,callback) - Same as obj.create() but static

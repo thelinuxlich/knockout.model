@@ -33,15 +33,17 @@ class @KnockoutModel
     constructor: ->
         @__urls = @constructor.__urls
         @set(@constructor.__defaults)
-    
+
+    # instance urls list
+    __urls: {}
+
     # Adds or modifies a route on instance and stactically
-    addRoute: (id,href) ->
+    addRoute: (id,href,static = true) ->
       @__urls[id] = href
-      @constructor.__urls[id] = href
+      @constructor.__urls[id] = href if static is true
 
     # Gets an attribute value(observable or not)
-    get: (attr) ->
-        ko.utils.unwrapObservable @[attr]
+    get: (attr) -> ko.utils.unwrapObservable @[attr]
 
     # Args must be an object containing one or more attributes and its new values
     # Additionally, detects HTML entities and unescape them
@@ -55,58 +57,51 @@ class @KnockoutModel
         @
 
     # creates an action with HTTP POST
-    postAction: (routeName,options) ->
-        options = options or {}
-        @[routeName] = ->
-            [params,callback] = @constructor.__generate_request_parameters.apply(@,arguments)
-            params = $.extend(params,@toJS())
-            url = @constructor.__parse_url(@__urls[routeName],params)
-            RQ.add ($.post url, params, (data) ->
-                    callback(data) if typeof callback is "function"
-                , "json"
-            ), "rq_#{@constructor.name}_"+new Date()
-        if options["static"] is true
-            @constructor[routeName] = ->
-                [params,callback] = @constructor.__generate_request_parameters.apply(@,arguments)
-                url = @__parse_url(@__urls[routeName],params)
-                RQ.add ($.post url, params, (data) ->
-                        callback(data) if typeof callback is "function"
-                    , "json"
-                ), "rq_#{@name}_"+new Date()
+    doPost: (routeName,params = {},callback = null) ->
+        if routeName.match(/^http:\/\//) is null
+            url = @__urls[routeName]
+        else
+            url = routeName
+        @constructor.doPost url,params,callback
 
     # creates an action with HTTP GET
-    getAction: (routeName,options) ->
-        options = options or {}
-        @[routeName] = ->
-            [params,callback] = @constructor.__generate_request_parameters.apply(@,arguments)
-            isCache = params? and params["__cache"] is true
-            delete params["__cache"] if isCache is true
-            cached = @constructor.__cacheContainer.find("#{@constructor.name}##{routeName}", params) if isCache is true
-            if cached?
-                callback(cached.data) if typeof callback is "function"
-            else
-                tempParams = $.extend {},params
-                tempParams["__no_cache"] = new Date().getTime()
-                url = @constructor.__parse_url(@__urls[routeName],tempParams)
-                RQ.add $.getJSON url, tempParams, (data) ->
-                    @constructor.__cacheContainer.push({id: "#{@constructor.name}##{routeName}", params: params,data: data}) if isCache is true
-                    callback(data) if typeof callback is "function"
-                , "rq_#{@constructor.name}_"+new Date()
-        if options["static"] is true
-            [params,callback] = @constructor.__generate_request_parameters.apply(@,arguments)
-            isCache = params? and params["__cache"] is true
-            delete params["__cache"] if isCache is true
-            cached = @__cacheContainer.find("#{@name}##{routeName}", params) if isCache is true
-            if cached?
-                callback(cached.data) if typeof callback is "function"
-            else
-                tempParams = $.extend {},params
-                tempParams["__no_cache"] = new Date().getTime()
-                url = @__parse_url(@__urls[routeName],tempParams)
-                RQ.add $.getJSON url, tempParams, (data) ->
-                    @__cacheContainer.push({id: "#{@name}##{routeName}", params: params,data: data}) if isCache is true
-                    callback(data) if typeof callback is "function"
-                , "rq_#{@name}_"+new Date()
+    doGet: (routeName,params = {},callback = null) ->
+        if routeName.match(/^http:\/\//) is null
+            url = @__urls[routeName]
+        else
+            url = routeName
+        @constructor.doGet url,params,callback
+
+    # (static) creates an action with HTTP POST
+    @doPost: (routeName,params = {},callback = null) ->
+        if routeName.match(/^http:\/\//) is null
+            url = @__parse_url(@__urls[routeName],params)
+        else
+            url = @__parse_url(routeName,params)
+        RQ.add ($.post url, params, (data) ->
+                callback(data) if typeof callback is "function"
+            , "json"
+        ), "rq_#{@name}_"+new Date()
+
+    # (static) creates an action with HTTP GET
+    @doGet: (routeName,params = {},callback = null) ->
+        if routeName.match(/^http:\/\//) is null
+            url = @__parse_url(@__urls[routeName],params)
+        else
+            url = @__parse_url(routeName,params)
+        isCache = params["__cache"] is true
+        delete params["__cache"] if isCache is true
+        cc = @__cacheContainer
+        cached = cc.find("#{@name}##{routeName}", params) if isCache is true
+        if cached?
+            callback(cached.data) if typeof callback is "function"
+        else
+            tempParams = $.extend {},params
+            tempParams["__no_cache"] = new Date().getTime()
+            RQ.add $.getJSON url, tempParams, (data) ->
+                cc.push({id: "#{@name}##{routeName}", params: params,data: data}) if isCache is true
+                callback(data) if typeof callback is "function"
+            , "rq_#{@name}_"+new Date()
 
     # (static) Returns an array of objects using the data param(another array of data)
     @createCollection: (data,callback) ->
@@ -124,34 +119,31 @@ class @KnockoutModel
     clear: ->
         values = {}
         for own i,item of @
-            switch(typeof @get(i))
-                when "string" then values[i] = (if @constructor.__defaults[i] isnt undefined then @constructor.__defaults[i] else "")
-                when "number" then values[i] = (if @constructor.__defaults[i] isnt undefined then @constructor.__defaults[i] else 0)
-                when "boolean" then values[i] = (if @constructor.__defaults[i] isnt undefined then @constructor.__defaults[i] else false)
-                when "object"
-                    values[i] = (if @constructor.__defaults[i] isnt undefined then @constructor.__defaults[i] else [])
+            if i isnt "__urls"
+                switch(typeof @get(i))
+                    when "string" then values[i] = (if @constructor.__defaults[i] isnt undefined then @constructor.__defaults[i] else "")
+                    when "number" then values[i] = (if @constructor.__defaults[i] isnt undefined then @constructor.__defaults[i] else 0)
+                    when "boolean" then values[i] = (if @constructor.__defaults[i] isnt undefined then @constructor.__defaults[i] else false)
+                    when "object"
+                        values[i] = (if @constructor.__defaults[i] isnt undefined then @constructor.__defaults[i] else [])
         @set(values)
 
     # Refreshes model data calling show()
     refresh: (callback) ->
-        @show {id: @get("id")}, (data) ->
+        @show (data) ->
             if data.status is "SUCCESS"
                 @set(data)
             callback(data) if typeof callback is "function"
 
     # Convert whole model to JSON, adds a random attribute to avoid IE issues with GET requests
-    toJSON: (options) ->
-        temp = @clone(options)
-        ko.toJSON(temp)
+    toJSON: (options) -> ko.toJSON @clone(options)
 
     # Convert whole model to a plain JS object, adds a random attribute to avoid IE issues with GET requests
-    toJS: (options) ->
-        temp = @clone(options)
-        ko.toJS(temp)
+    toJS: (options) -> ko.toJS @clone(options)
 
     # Clones the model without 'private' attributes
     clone: (args = {}) ->
-        transientAttributes = {}
+        transientAttributes = {'__urls': false}
         for param in @constructor.__transientParameters
             transientAttributes[param] = false
         args = $.extend(transientAttributes,args)
@@ -167,8 +159,7 @@ class @KnockoutModel
         value? && value isnt ""
 
     # Override this with your own validation method returning true or false
-    validate: ->
-        true
+    validate: -> true
 
     # Validate the model then check if it's new(call create) or existing(call update)
     save: ->
@@ -195,128 +186,64 @@ class @KnockoutModel
     # parses an url(Sinatra-like style with :parameters)
     @__parse_url: (url,params) ->
         url.replace /:([a-zA-Z0-9_]+)/g, (match) ->
-            attr = match.substring(1)
-            value = param[attr]
-            delete param[attr]
+            params[match.substring(1)]
+            value = params[attr]
+            delete params[attr]
             value
 
     # Starts an AJAX request to create the entity using the "create" URL
     create: ->
         [params,callback] = @constructor.__generate_request_parameters.apply(@,arguments)
         params = $.extend(params,@toJS())
-        url = @constructor.__parse_url(@__urls["create"],params)
-        RQ.add ($.post url, params, (data) ->
-                callback(data) if typeof callback is "function"
-            , "json"
-        ), "rq_#{@constructor.name}_"+new Date()
+        @doPost "create",params,callback
 
     # Starts an AJAX request to update the entity using the "update" URL
     update: ->
         [params,callback] = @constructor.__generate_request_parameters.apply(@,arguments)
         params = $.extend(params,@toJS())
-        url = @constructor.__parse_url(@__urls["update"],params)
-        RQ.add ($.post url, params, (data) ->
-                callback(data) if typeof callback is "function"
-            , "json"
-        ), "rq_#{@constructor.name}_"+new Date()
+        @doPost "update",params,callback
 
     # Starts an AJAX request to remove the entity using the "destroy" URL
     destroy: ->
         [params,callback] = @constructor.__generate_request_parameters.apply(@,arguments)
         params = $.extend(params,@toJS())
-        RQ.add ($.post @constructor.__parse_url(@__urls["destroy"],params), params, (data) ->
-                callback(data) if typeof callback is "function"
-            , "json"
-        ), "rq_#{@constructor.name}_"+new Date()
+        @doPost "destroy",params,callback
 
     # Fetch by model ID using the "show" URL
     show: ->
         [params,callback] = @constructor.__generate_request_parameters.apply(@,arguments)
-        isCache = params? and params["__cache"] is true
-        delete params["__cache"] if isCache is true
-        cached = @constructor.__cacheContainer.find("#{@constructor.name}#show", params) if isCache is true
-        if cached?
-            callback(cached.data) if typeof callback is "function"
-        else
-            tempParams = $.extend {},params
-            tempParams["__no_cache"] = new Date().getTime()
-            RQ.add $.getJSON @constructor.__parse_url(@__urls["show"],params), tempParams, (data) ->
-                @constructor.__cacheContainer.push({id: "#{@constructor.name}#show", params: params,data: data}) if isCache is true
-                callback(data) if typeof callback is "function"
-            , "rq_#{@constructor.name}_"+new Date()
+        params = $.extend(params,{id: @get("id")})
+        @doGet "show",params,callback
 
     # Fetch all using the "index" URL
     index: ->
         [params,callback] = @constructor.__generate_request_parameters.apply(@,arguments)
-        isCache = params? and params["__cache"] is true
-        delete params["__cache"] if isCache is true
-        cached = @constructor.__cacheContainer.find("#{@constructor.name}#index", params) if isCache is true
-        if cached?
-            callback(cached.data) if typeof callback is "function"
-        else
-            tempParams = $.extend {},params
-            tempParams["__no_cache"] = new Date().getTime()
-            RQ.add $.getJSON @constructor.__parse_url(@__urls["index"],params), tempParams, (data) ->
-                @constructor.__cacheContainer.push({id: "#{@constructor.name}#index", params: params,data: data}) if isCache is true
-                callback(data) if typeof callback is "function"
-            , "rq_#{@constructor.name}_"+new Date()
+        @doGet "index",params,callback
 
     # (static) Starts an AJAX request to create the entity using the "create" URL
     @create: ->
         [params,callback] = @__generate_request_parameters.apply(@,arguments)
-        RQ.add ($.post @__parse_url(@__urls["create"],params), params, (data) ->
-                callback(data) if typeof callback is "function"
-            , "json"
-        ), "rq_#{@name}_"+new Date()
+        @doPost "create",params,callback
 
     # (static) Starts an AJAX request to update the entity using the "update" URL
     @update: ->
         [params,callback] = @__generate_request_parameters.apply(@,arguments)
-        RQ.add ($.post @__parse_url(@__urls["update"],params), params, (data) ->
-                callback(data) if typeof callback is "function"
-            , "json"
-        ), "rq_#{@name}_"+new Date()
+        @doPost "update",params,callback
 
     # (static) Starts an AJAX request to remove the entity using the "destroy" URL
     @destroy: ->
         [params,callback] = @__generate_request_parameters.apply(@,arguments)
-        RQ.add ($.post @__parse_url(@__urls["destroy"],params), params, (data) ->
-                callback(data) if typeof callback is "function"
-            , "json"
-        ), "rq_#{@name}_"+new Date()
+        @doPost "destroy",params,callback
 
     # (static) Fetch by model ID using the "show" URL
     @show: ->
         [params,callback] = @__generate_request_parameters.apply(@,arguments)
-        isCache = params? and params["__cache"] is true
-        delete params["__cache"] if isCache is true
-        cached = @__cacheContainer.find("#{@name}#show", params) if isCache is true
-        if cached?
-            callback(cached.data) if typeof callback is "function"
-        else
-            tempParams = $.extend {},params
-            tempParams["__no_cache"] = new Date().getTime()
-            RQ.add $.getJSON @__parse_url(@__urls["show"],params), tempParams, (data) =>
-                @__cacheContainer.push({id: "#{@name}#show", params: params,data: data}) if isCache is true
-                callback(data) if typeof callback is "function"
-            , "rq_#{@name}_"+new Date()
+        @doGet "show",params,callback
 
     # (static) Fetch all using the "index" URL
     @index: ->
         [params,callback] = @__generate_request_parameters.apply(@,arguments)
-        isCache = params? and params["__cache"] is true
-        delete params["__cache"] if isCache is true
-        cached = @__cacheContainer.find("#{@name}#index", params) if isCache is true
-        if cached?
-            callback(cached.data) if typeof callback is "function"
-        else
-            tempParams = $.extend {},params
-            tempParams["__no_cache"] = new Date().getTime()
-            RQ.add $.getJSON @__parse_url(@__urls["index"],params), tempParams, (data) =>
-                @__cacheContainer.push {id: "#{@name}#index", params: params,data: data} if isCache is true
-                callback(data) if typeof callback is "function"
-            , "rq_#{@name}_"+new Date()
+        @doGet "index",params,callback
 
     # (static) Abort all requests of this model
-    @killAllRequests: ->
-        RQ.killByRegex /^rq_#{@name}_/
+    @killAllRequests: -> RQ.killByRegex /^rq_#{@name}_/
