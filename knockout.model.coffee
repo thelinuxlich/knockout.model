@@ -51,57 +51,61 @@ class @KnockoutModel
         for own i,item of args
             if ko.isWriteableObservable(@[i])
                 @[i](if typeof item is "string" and item.match(/&[^\s]*;/) then ko.utils.unescapeHtml(item) else item)
+            else if ko.isObservable(@[i])
             else if @[i] isnt undefined
                 @[i] = if typeof item is "string" and item.match(/&[^\s]*;/) then ko.utils.unescapeHtml(item) else item
 
         @
 
     # creates an action with HTTP POST
-    doPost: (routeName,params = {},callback = null) ->
+    doPost: (routeName,params = {},callback = null,type = "json") ->
         if routeName.match(/^http:\/\//) is null
             url = @__urls[routeName]
         else
             url = routeName
-        @constructor.doPost url,params,callback
+        @constructor.doPost url,params,callback,type
 
     # creates an action with HTTP GET
-    doGet: (routeName,params = {},callback = null) ->
+    doGet: (routeName,params = {},callback = null,type = "json") ->
         if routeName.match(/^http:\/\//) is null
             url = @__urls[routeName]
         else
             url = routeName
-        @constructor.doGet url,params,callback
+        @constructor.doGet url,params,callback,type
 
     # (static) creates an action with HTTP POST
-    @doPost: (routeName,params = {},callback = null) ->
+    @doPost: (routeName,params = {},callback = null,type = "json") ->
         if routeName.match(/^http:\/\//) is null
             url = @__parse_url(@__urls[routeName],params)
         else
             url = @__parse_url(routeName,params)
+        className = @name
         RQ.add ($.post url, params, (data) ->
                 callback(data) if typeof callback is "function"
-            , "json"
-        ), "rq_#{@name}_"+new Date()
+            , type
+        ), "rq_#{className}_"+new Date()
 
     # (static) creates an action with HTTP GET
-    @doGet: (routeName,params = {},callback = null) ->
+    @doGet: (routeName,params = {},callback = null,type = "json") ->
         if routeName.match(/^http:\/\//) is null
             url = @__parse_url(@__urls[routeName],params)
         else
             url = @__parse_url(routeName,params)
+        className = @name
         isCache = params["__cache"] is true
         delete params["__cache"] if isCache is true
         cc = @__cacheContainer
-        cached = cc.find("#{@name}##{routeName}", params) if isCache is true
+        cached = cc.find("#{className}##{routeName}", params) if isCache is true
         if cached?
             callback(cached.data) if typeof callback is "function"
         else
             tempParams = $.extend {},params
             tempParams["__no_cache"] = new Date().getTime()
-            RQ.add $.getJSON url, tempParams, (data) ->
-                cc.push({id: "#{@name}##{routeName}", params: params,data: data}) if isCache is true
-                callback(data) if typeof callback is "function"
-            , "rq_#{@name}_"+new Date()
+            RQ.add $.get url, tempParams, (data) ->
+                    cc.push({id: "#{className}##{routeName}", params: params,data: data}) if isCache is true
+                    callback(data) if typeof callback is "function"
+                , type
+            , "rq_#{className}_"+new Date()
 
     # (static) Returns an array of objects using the data param(another array of data)
     @createCollection: (data,callback) ->
@@ -156,7 +160,7 @@ class @KnockoutModel
     # A simple convention: if model.id is blank, then it's new
     isNew: ->
         value = @get("id")
-        value? && value isnt ""
+        value is null or value is undefined or value is ""
 
     # Override this with your own validation method returning true or false
     validate: -> true

@@ -50,81 +50,95 @@
         item = args[i];
         if (ko.isWriteableObservable(this[i])) {
           this[i](typeof item === "string" && item.match(/&[^\s]*;/) ? ko.utils.unescapeHtml(item) : item);
-        } else if (this[i] !== void 0) {
+        } else if (ko.isObservable(this[i])) {} else if (this[i] !== void 0) {
           this[i] = typeof item === "string" && item.match(/&[^\s]*;/) ? ko.utils.unescapeHtml(item) : item;
         }
       }
       return this;
     };
-    KnockoutModel.prototype.doPost = function(routeName, params, callback) {
+    KnockoutModel.prototype.doPost = function(routeName, params, callback, type) {
       var url;
       if (params == null) {
         params = {};
       }
       if (callback == null) {
         callback = null;
+      }
+      if (type == null) {
+        type = "json";
       }
       if (routeName.match(/^http:\/\//) === null) {
         url = this.__urls[routeName];
       } else {
         url = routeName;
       }
-      return this.constructor.doPost(url, params, callback);
+      return this.constructor.doPost(url, params, callback, type);
     };
-    KnockoutModel.prototype.doGet = function(routeName, params, callback) {
+    KnockoutModel.prototype.doGet = function(routeName, params, callback, type) {
       var url;
       if (params == null) {
         params = {};
       }
       if (callback == null) {
         callback = null;
+      }
+      if (type == null) {
+        type = "json";
       }
       if (routeName.match(/^http:\/\//) === null) {
         url = this.__urls[routeName];
       } else {
         url = routeName;
       }
-      return this.constructor.doGet(url, params, callback);
+      return this.constructor.doGet(url, params, callback, type);
     };
-    KnockoutModel.doPost = function(routeName, params, callback) {
-      var url;
+    KnockoutModel.doPost = function(routeName, params, callback, type) {
+      var className, url;
       if (params == null) {
         params = {};
       }
       if (callback == null) {
         callback = null;
+      }
+      if (type == null) {
+        type = "json";
       }
       if (routeName.match(/^http:\/\//) === null) {
         url = this.__parse_url(this.__urls[routeName], params);
       } else {
         url = this.__parse_url(routeName, params);
       }
+      className = this.name;
       return RQ.add($.post(url, params, function(data) {
         if (typeof callback === "function") {
           return callback(data);
         }
-      }, "json"), ("rq_" + this.name + "_") + new Date());
+      }, type), ("rq_" + className + "_") + new Date());
     };
-    KnockoutModel.doGet = function(routeName, params, callback) {
-      var cached, cc, isCache, tempParams, url;
+    KnockoutModel.doGet = function(routeName, params, callback, type) {
+      var cached, cc, className, isCache, tempParams, url;
       if (params == null) {
         params = {};
       }
       if (callback == null) {
         callback = null;
       }
+      if (type == null) {
+        type = "json";
+      }
       if (routeName.match(/^http:\/\//) === null) {
         url = this.__parse_url(this.__urls[routeName], params);
       } else {
         url = this.__parse_url(routeName, params);
       }
+      className = this.name;
       isCache = params["__cache"] === true;
       if (isCache === true) {
         delete params["__cache"];
       }
       cc = this.__cacheContainer;
       if (isCache === true) {
-        cached = cc.find("" + this.name + "#" + routeName, params);
+        cached = cc.find("" + className + "#" + routeName, params);
       }
       if (cached != null) {
         if (typeof callback === "function") {
@@ -133,10 +147,10 @@
       } else {
         tempParams = $.extend({}, params);
         tempParams["__no_cache"] = new Date().getTime();
-        return RQ.add($.getJSON(url, tempParams, function(data) {
+        return RQ.add($.get(url, tempParams, function(data) {
           if (isCache === true) {
             cc.push({
-              id: "" + this.name + "#" + routeName,
+              id: "" + className + "#" + routeName,
               params: params,
               data: data
             });
@@ -144,7 +158,7 @@
           if (typeof callback === "function") {
             return callback(data);
           }
-        }, ("rq_" + this.name + "_") + new Date()));
+        }, type, ("rq_" + className + "_") + new Date()));
       }
     };
     KnockoutModel.createCollection = function(data, callback) {
@@ -228,7 +242,7 @@
     KnockoutModel.prototype.isNew = function() {
       var value;
       value = this.get("id");
-      return (value != null) && value !== "";
+      return value === null || value === void 0 || value === "";
     };
     KnockoutModel.prototype.validate = function() {
       return true;
