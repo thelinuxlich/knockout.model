@@ -38,10 +38,10 @@ Date: Fri Mar 04 14:00:29 2011 -0300
 * obj.show(params,callback) - Fetches a model data(usually based on id) from the server, using the "show" key from the url object
 * obj.index(params,callback) - Fetches all model data from the server, using the "index" key from the url object
 * obj.addRoute(id,href,static = true) - Adds/modifies a route on __urls object. Third parameter also adds the route to static routes.
-* obj.doGet(route_id_or_url,params,callback) - Creates a new AJAX GET request with the same pattern of the standard routes.
-* obj.doPost(route_id_or_url,params,callback) - Creates a new AJAX POST request with the same pattern of the standard routes.
-* Model.doGet(route_id_or_url,params,callback) - Same as obj.doPost() but static
-* Model.doPost(route_id_or_url,params,callback) - Same as obj.doGet() but static
+* obj.doGet(route_id_or_url,params,callback,type="json") - Creates a new AJAX GET request with the same pattern of the standard routes.
+* obj.doPost(route_id_or_url,params,callback,type="json") - Creates a new AJAX POST request with the same pattern of the standard routes.
+* Model.doGet(route_id_or_url,params,callback,type="json") - Same as obj.doPost() but static
+* Model.doPost(route_id_or_url,params,callback,type="json") - Same as obj.doGet() but static
 * Model.killAllRequests() - Aborts all AJAX requests of this model (static method)
 * Model.createCollection(data,transformFunction) - Creates a collection of model objects instantiating one-by-one with the data array, second parameter is a callback for customizing each item from data (static)
 * Model.create(params,callback) - Same as obj.create() but static
