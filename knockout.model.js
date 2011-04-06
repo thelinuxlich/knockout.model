@@ -31,12 +31,12 @@
       this.set(this.constructor.__defaults);
     }
     KnockoutModel.prototype.__urls = {};
-    KnockoutModel.prototype.addRoute = function(id, href, static) {
-      if (static == null) {
-        static = true;
+    KnockoutModel.prototype.addRoute = function(id, href, isStatic) {
+      if (isStatic == null) {
+        isStatic = true;
       }
       this.__urls[id] = href;
-      if (static === true) {
+      if (isStatic === true) {
         return this.constructor.__urls[id] = href;
       }
     };
@@ -177,24 +177,27 @@
       return collection;
     };
     KnockoutModel.prototype.clear = function() {
-      var i, item, values;
+      var actual_value, i, item, values;
       values = {};
       for (i in this) {
         if (!__hasProp.call(this, i)) continue;
         item = this[i];
         if (i !== "__urls") {
-          switch (typeof this.get(i)) {
-            case "string":
-              values[i] = (this.constructor.__defaults[i] !== void 0 ? this.constructor.__defaults[i] : "");
-              break;
-            case "number":
-              values[i] = (this.constructor.__defaults[i] !== void 0 ? this.constructor.__defaults[i] : 0);
-              break;
-            case "boolean":
-              values[i] = (this.constructor.__defaults[i] !== void 0 ? this.constructor.__defaults[i] : false);
-              break;
-            case "object":
-              values[i] = (this.constructor.__defaults[i] !== void 0 ? this.constructor.__defaults[i] : []);
+          actual_value = this.get(i);
+          if (actual_value !== this.constructor.__defaults[i] && actual_value !== "" && actual_value !== 0 && actual_value !== false && actual_value !== [] && actual_value !== null) {
+            switch (typeof actual_value) {
+              case "string":
+                values[i] = (this.constructor.__defaults[i] !== void 0 ? this.constructor.__defaults[i] : "");
+                break;
+              case "number":
+                values[i] = (this.constructor.__defaults[i] !== void 0 ? this.constructor.__defaults[i] : 0);
+                break;
+              case "boolean":
+                values[i] = (this.constructor.__defaults[i] !== void 0 ? this.constructor.__defaults[i] : false);
+                break;
+              case "object":
+                values[i] = (this.constructor.__defaults[i] !== void 0 ? this.constructor.__defaults[i] : []);
+            }
           }
         }
       }

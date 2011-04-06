@@ -37,10 +37,10 @@ class @KnockoutModel
     # instance urls list
     __urls: {}
 
-    # Adds or modifies a route on instance and stactically
-    addRoute: (id,href,static = true) ->
+    # Adds or modifies a route on instance and statically
+    addRoute: (id,href,isStatic = true) ->
       @__urls[id] = href
-      @constructor.__urls[id] = href if static is true
+      @constructor.__urls[id] = href if isStatic is true
 
     # Gets an attribute value(observable or not)
     get: (attr) -> ko.utils.unwrapObservable @[attr]
@@ -124,12 +124,14 @@ class @KnockoutModel
         values = {}
         for own i,item of @
             if i isnt "__urls"
-                switch(typeof @get(i))
-                    when "string" then values[i] = (if @constructor.__defaults[i] isnt undefined then @constructor.__defaults[i] else "")
-                    when "number" then values[i] = (if @constructor.__defaults[i] isnt undefined then @constructor.__defaults[i] else 0)
-                    when "boolean" then values[i] = (if @constructor.__defaults[i] isnt undefined then @constructor.__defaults[i] else false)
-                    when "object"
-                        values[i] = (if @constructor.__defaults[i] isnt undefined then @constructor.__defaults[i] else [])
+                actual_value = @get(i)
+                if actual_value isnt @constructor.__defaults[i] and actual_value isnt "" and actual_value isnt 0 and actual_value isnt false and actual_value isnt [] and actual_value isnt null
+                  switch(typeof actual_value)
+                      when "string" then values[i] = (if @constructor.__defaults[i] isnt undefined then @constructor.__defaults[i] else "")
+                      when "number" then values[i] = (if @constructor.__defaults[i] isnt undefined then @constructor.__defaults[i] else 0)
+                      when "boolean" then values[i] = (if @constructor.__defaults[i] isnt undefined then @constructor.__defaults[i] else false)
+                      when "object"
+                          values[i] = (if @constructor.__defaults[i] isnt undefined then @constructor.__defaults[i] else [])
         @set(values)
 
     # Refreshes model data calling show()
