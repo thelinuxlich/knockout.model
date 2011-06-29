@@ -27,8 +27,15 @@
     KnockoutModel.__transientParameters = [];
     KnockoutModel.__cacheContainer = new ko.utils.IdentityMap();
     function KnockoutModel() {
+      var i, item;
       this.__urls = this.constructor.__urls;
-      this.set(this.constructor.__defaults);
+      for (i in this) {
+        if (!__hasProp.call(this, i)) continue;
+        item = this[i];
+        if (i !== "__urls") {
+          this.constructor.__defaults[i] = this.get(i);
+        }
+      }
     }
     KnockoutModel.prototype.__urls = {};
     KnockoutModel.prototype.addRoute = function(id, href, isStatic) {
@@ -44,17 +51,21 @@
       return ko.utils.unwrapObservable(this[attr]);
     };
     KnockoutModel.prototype.set = function(args) {
-      var i, item;
+      var i, item, new_value, obj;
+      obj = this;
       for (i in args) {
-        if (!__hasProp.call(args, i)) continue;
         item = args[i];
-        if (ko.isWriteableObservable(this[i])) {
-          this[i](typeof item === "string" && item.match(/&[^\s]*;/) ? ko.utils.unescapeHtml(item) : item);
-        } else if (ko.isObservable(this[i])) {} else if (this[i] !== void 0) {
-          this[i] = typeof item === "string" && item.match(/&[^\s]*;/) ? ko.utils.unescapeHtml(item) : item;
+        if (ko.isWriteableObservable(obj[i])) {
+          new_value = typeof item === "string" && item.match(/&[^\s]*;/) === false ? ko.utils.unescapeHtml(item) : item;
+          if (new_value !== obj[i]()) {
+            obj[i](new_value);
+          }
+        } else if (obj[i] !== void 0 && ko.isObservable(obj[i]) === false) {
+          new_value = item.match(/&[^\s]*;/) === false ? ko.utils.unescapeHtml(item) : item;
+          obj[i] = new_value;
         }
       }
-      return this;
+      return obj;
     };
     KnockoutModel.prototype.doPost = function(routeName, params, callback, type) {
       var url;
@@ -110,8 +121,12 @@
       }
       className = this.name;
       return RQ.add($.post(url, params, function(data) {
-        if (typeof callback === "function") {
-          return callback(data);
+        try {
+          if (typeof callback === "function") {
+            return callback(data);
+          }
+        } catch (error) {
+
         }
       }, type), ("rq_" + className + "_") + new Date());
     };
@@ -155,8 +170,12 @@
               data: data
             });
           }
-          if (typeof callback === "function") {
-            return callback(data);
+          try {
+            if (typeof callback === "function") {
+              return callback(data);
+            }
+          } catch (error) {
+
           }
         }, type, ("rq_" + className + "_") + new Date()));
       }
@@ -177,31 +196,7 @@
       return collection;
     };
     KnockoutModel.prototype.clear = function() {
-      var actual_value, i, item, values;
-      values = {};
-      for (i in this) {
-        if (!__hasProp.call(this, i)) continue;
-        item = this[i];
-        if (i !== "__urls") {
-          actual_value = this.get(i);
-          if (actual_value !== this.constructor.__defaults[i] && actual_value !== "" && actual_value !== 0 && actual_value !== false && actual_value !== [] && actual_value !== null) {
-            switch (typeof actual_value) {
-              case "string":
-                values[i] = (this.constructor.__defaults[i] !== void 0 ? this.constructor.__defaults[i] : "");
-                break;
-              case "number":
-                values[i] = (this.constructor.__defaults[i] !== void 0 ? this.constructor.__defaults[i] : 0);
-                break;
-              case "boolean":
-                values[i] = (this.constructor.__defaults[i] !== void 0 ? this.constructor.__defaults[i] : false);
-                break;
-              case "object":
-                values[i] = (this.constructor.__defaults[i] !== void 0 ? this.constructor.__defaults[i] : []);
-            }
-          }
-        }
-      }
-      return this.set(values);
+      return this.set(this.constructor.__defaults);
     };
     KnockoutModel.prototype.refresh = function(callback) {
       return this.show(function(data) {

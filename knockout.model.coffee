@@ -32,7 +32,9 @@ class @KnockoutModel
     # Sets default values on initialization
     constructor: ->
         @__urls = @constructor.__urls
-        @set(@constructor.__defaults)
+        for own i,item of @
+          if i isnt "__urls"
+            @constructor.__defaults[i] = @get(i)
 
     # instance urls list
     __urls: {}
@@ -48,14 +50,16 @@ class @KnockoutModel
     # Args must be an object containing one or more attributes and its new values
     # Additionally, detects HTML entities and unescape them
     set: (args) ->
-        for own i,item of args
-            if ko.isWriteableObservable(@[i])
-                @[i](if typeof item is "string" and item.match(/&[^\s]*;/) then ko.utils.unescapeHtml(item) else item)
-            else if ko.isObservable(@[i])
-            else if @[i] isnt undefined
-                @[i] = if typeof item is "string" and item.match(/&[^\s]*;/) then ko.utils.unescapeHtml(item) else item
-
-        @
+        obj = @
+        for i,item of args
+            if ko.isWriteableObservable(obj[i])
+                new_value = if typeof item is "string" and item.match(/&[^\s]*;/) is false then ko.utils.unescapeHtml(item) else item 
+                if new_value isnt obj[i]()
+                    obj[i](new_value)
+            else if obj[i] isnt undefined and ko.isObservable(obj[i]) is false
+                new_value = if item.match(/&[^\s]*;/) is false then ko.utils.unescapeHtml(item) else item 
+                obj[i] = new_value
+        obj
 
     # creates an action with HTTP POST
     doPost: (routeName,params = {},callback = null,type = "json") ->
@@ -81,7 +85,9 @@ class @KnockoutModel
             url = @__parse_url(routeName,params)
         className = @name
         RQ.add ($.post url, params, (data) ->
-                callback(data) if typeof callback is "function"
+                try
+                    callback(data) if typeof callback is "function"
+                catch error    
             , type
         ), "rq_#{className}_"+new Date()
 
@@ -103,7 +109,9 @@ class @KnockoutModel
             tempParams["__no_cache"] = new Date().getTime()
             RQ.add $.get url, tempParams, (data) ->
                     cc.push({id: "#{className}##{routeName}", params: params,data: data}) if isCache is true
-                    callback(data) if typeof callback is "function"
+                    try
+                        callback(data) if typeof callback is "function"
+                    catch error    
                 , type
             , "rq_#{className}_"+new Date()
 
@@ -120,19 +128,7 @@ class @KnockoutModel
         collection
 
     # Clear all attributes and set default values
-    clear: ->
-        values = {}
-        for own i,item of @
-            if i isnt "__urls"
-                actual_value = @get(i)
-                if actual_value isnt @constructor.__defaults[i] and actual_value isnt "" and actual_value isnt 0 and actual_value isnt false and actual_value isnt [] and actual_value isnt null
-                  switch(typeof actual_value)
-                      when "string" then values[i] = (if @constructor.__defaults[i] isnt undefined then @constructor.__defaults[i] else "")
-                      when "number" then values[i] = (if @constructor.__defaults[i] isnt undefined then @constructor.__defaults[i] else 0)
-                      when "boolean" then values[i] = (if @constructor.__defaults[i] isnt undefined then @constructor.__defaults[i] else false)
-                      when "object"
-                          values[i] = (if @constructor.__defaults[i] isnt undefined then @constructor.__defaults[i] else [])
-        @set(values)
+    clear: -> @set(@constructor.__defaults)
 
     # Refreshes model data calling show()
     refresh: (callback) ->
