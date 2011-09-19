@@ -52,12 +52,12 @@ class @KnockoutModel
     set: (args) ->
         obj = @
         for i,item of args
-            if ko.isWriteableObservable(obj[i])
-                new_value = if typeof item is "string" and item.match(/&[^\s]*;/) is false then ko.utils.unescapeHtml(item) else item 
+            if ko.isWriteableObservable(obj[i]) 
+                new_value = if typeof item is "string" and item.match(/&[^\s]*;/) isnt false then ko.utils.unescapeHtml(item) else item 
                 if new_value isnt obj[i]()
                     obj[i](new_value)
             else if obj[i] isnt undefined and ko.isObservable(obj[i]) is false
-                new_value = if item.match(/&[^\s]*;/) is false then ko.utils.unescapeHtml(item) else item 
+                new_value = if item.match(/&[^\s]*;/) isnt false then ko.utils.unescapeHtml(item) else item 
                 obj[i] = new_value
         obj
 
@@ -77,7 +77,7 @@ class @KnockoutModel
             url = routeName
         @constructor.doGet url,params,callback,type
 
-    # (static) creates an action with HTTP POST
+    # (static) creates an action with HTTP POST 
     @doPost: (routeName,params = {},callback = null,type = "json") ->
         if routeName.match(/^http:\/\//) is null
             url = @__parse_url(@__urls[routeName],params)
@@ -187,11 +187,16 @@ class @KnockoutModel
 
     # parses an url(Sinatra-like style with :parameters)
     @__parse_url: (url,params) ->
-        url.replace /:([a-zA-Z0-9_]+)/g, (match) ->
-            params[match.substring(1)]
-            value = params[attr]
-            delete params[attr]
-            value
+        a = document.createElement "a"
+        a.href = url
+        a.pathname = a.pathname.replace /:([a-zA-Z0-9_]+)/g, (match) ->
+          attr = match.substring(1)
+          value = params[attr]
+          delete params[attr]
+          value
+        link = a.href
+        a = null
+        link
 
     # Starts an AJAX request to create the entity using the "create" URL
     create: ->

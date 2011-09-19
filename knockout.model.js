@@ -56,12 +56,12 @@
       for (i in args) {
         item = args[i];
         if (ko.isWriteableObservable(obj[i])) {
-          new_value = typeof item === "string" && item.match(/&[^\s]*;/) === false ? ko.utils.unescapeHtml(item) : item;
+          new_value = typeof item === "string" && item.match(/&[^\s]*;/) !== false ? ko.utils.unescapeHtml(item) : item;
           if (new_value !== obj[i]()) {
             obj[i](new_value);
           }
         } else if (obj[i] !== void 0 && ko.isObservable(obj[i]) === false) {
-          new_value = item.match(/&[^\s]*;/) === false ? ko.utils.unescapeHtml(item) : item;
+          new_value = item.match(/&[^\s]*;/) !== false ? ko.utils.unescapeHtml(item) : item;
           obj[i] = new_value;
         }
       }
@@ -278,13 +278,19 @@
       return [params, callback];
     };
     KnockoutModel.__parse_url = function(url, params) {
-      return url.replace(/:([a-zA-Z0-9_]+)/g, function(match) {
-        var value;
-        params[match.substring(1)];
+      var a, link;
+      a = document.createElement("a");
+      a.href = url;
+      a.pathname = a.pathname.replace(/:([a-zA-Z0-9_]+)/g, function(match) {
+        var attr, value;
+        attr = match.substring(1);
         value = params[attr];
         delete params[attr];
         return value;
       });
+      link = a.href;
+      a = null;
+      return link;
     };
     KnockoutModel.prototype.create = function() {
       var callback, params, _ref;
