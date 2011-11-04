@@ -66,7 +66,7 @@ Date: Fri Mar 04 14:00:29 2011 -0300
 	@ An example of callback for automatically setting the model id after create
 	@__afterHooks:
 		"create": (response) ->
-		    @id response.id
+		    @.id response.id
 
         constructor: ->
             @id = ko.observable ""

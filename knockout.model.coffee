@@ -27,6 +27,7 @@ class @KnockoutModel
     @__urls: {}
     @__defaults: {}
     @__transientParameters: []
+    @__afterHooks: {}
     @__cacheContainer: new ko.utils.IdentityMap()
 
     # Sets default values on initialization
@@ -86,6 +87,7 @@ class @KnockoutModel
         className = @name
         RQ.add ($.post url, params, (data) ->
                 try
+                    @__afterHooks[routeName](data) if typeof @__afterHooks[routeName] is "function"
                     callback(data) if typeof callback is "function"
                 catch error    
             , type
@@ -110,6 +112,7 @@ class @KnockoutModel
             RQ.add $.get url, tempParams, (data) ->
                     cc.push({id: "#{className}##{routeName}", params: params,data: data}) if isCache is true
                     try
+                        @__afterHooks[routeName](data) if typeof @__afterHooks[routeName] is "function"
                         callback(data) if typeof callback is "function"
                     catch error    
                 , type

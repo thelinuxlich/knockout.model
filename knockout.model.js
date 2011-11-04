@@ -25,6 +25,7 @@
     KnockoutModel.__urls = {};
     KnockoutModel.__defaults = {};
     KnockoutModel.__transientParameters = [];
+    KnockoutModel.__afterHooks = {};
     KnockoutModel.__cacheContainer = new ko.utils.IdentityMap();
     function KnockoutModel() {
       var i, item;
@@ -122,6 +123,9 @@
       className = this.name;
       return RQ.add($.post(url, params, function(data) {
         try {
+          if (typeof this.__afterHooks[routeName] === "function") {
+            this.__afterHooks[routeName](data);
+          }
           if (typeof callback === "function") {
             return callback(data);
           }
@@ -171,6 +175,9 @@
             });
           }
           try {
+            if (typeof this.__afterHooks[routeName] === "function") {
+              this.__afterHooks[routeName](data);
+            }
             if (typeof callback === "function") {
               return callback(data);
             }
