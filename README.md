@@ -61,11 +61,11 @@ Date: Fri Mar 04 14:00:29 2011 -0300
                 "destroy": "http://#{window.location.host}/employees/delete"
 
         # We won't send status_text attribute to the server
-	@__transientParameters: ["status_text"]
+        @__transientParameters: ["status_text"]
 
-	# An example of callback for automatically setting the model id after create
-	@__afterHooks:
-		"create": (response) ->	@id response.id
+        # An example of callback for automatically setting the model id after create
+        @__afterHooks:
+                "create": (response) ->	@id response.id
 
         constructor: ->
             @id = ko.observable ""
