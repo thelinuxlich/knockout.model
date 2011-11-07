@@ -41,6 +41,10 @@ Date: Fri Mar 04 14:00:29 2011 -0300
 * obj.addRoute(id,href,static = true) - Adds/modifies a route on __urls object. Third parameter also adds the route to static routes.
 * obj.doGet(route_id_or_url,params,callback,type="json") - Creates a new AJAX GET request with the same pattern of the standard routes.
 * obj.doPost(route_id_or_url,params,callback,type="json") - Creates a new AJAX POST request with the same pattern of the standard routes.
+* obj.start_transaction() - Disconnects the model of subscribers temporarily
+* obj.commit() - Reconnects the model with its subscribers and notifies them
+* obj.backup() - Stores all model values in a temporary internal objects
+* obj.restore() - Restores all model values saved with obj.backup()
 * Model.doGet(route_id_or_url,params,callback,type="json") - Same as obj.doPost() but static
 * Model.doPost(route_id_or_url,params,callback,type="json") - Same as obj.doGet() but static
 * Model.killAllRequests() - Aborts all AJAX requests of this model (static method)

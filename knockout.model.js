@@ -1,5 +1,10 @@
 (function() {
-  var __hasProp = Object.prototype.hasOwnProperty;
+  var __indexOf = Array.prototype.indexOf || function(item) {
+    for (var i = 0, l = this.length; i < l; i++) {
+      if (this[i] === item) return i;
+    }
+    return -1;
+  }, __hasProp = Object.prototype.hasOwnProperty;
   ko.utils.IdentityMap = function() {
     this.find = function(id, params) {
       return $.grep(this, function(d) {
@@ -27,6 +32,22 @@
     KnockoutModel.__transientParameters = [];
     KnockoutModel.__afterHooks = {};
     KnockoutModel.__cacheContainer = new ko.utils.IdentityMap();
+    KnockoutModel.__backup = {};
+    KnockoutModel.__equalityComparer = function(a, b) {
+      var oldValueIsPrimitive, primitiveTypes, _ref;
+      primitiveTypes = {
+        'undefined': true,
+        'boolean': true,
+        'number': true,
+        'string': true
+      };
+      oldValueIsPrimitive = (a === null) || (_ref = typeof a, __indexOf.call(primitiveTypes, _ref) >= 0);
+      if (oldValueIsPrimitive) {
+        return a === b;
+      } else {
+        return false;
+      }
+    };
     function KnockoutModel() {
       var i, item;
       this.__urls = this.constructor.__urls;
@@ -34,6 +55,9 @@
         if (!__hasProp.call(this, i)) continue;
         item = this[i];
         if (i !== "__urls") {
+          if (ko.isObservable(this[i])) {
+            this[i].equalityComparer = this.constructor.__equalityComparer;
+          }
           this.constructor.__defaults[i] = this.get(i);
         }
       }
@@ -243,6 +267,36 @@
         }
       }
       return temp;
+    };
+    KnockoutModel.prototype.backup = function() {
+      return this.constructor.__backup = this.toJS();
+    };
+    KnockoutModel.prototype.restore = function() {
+      this.set(this.constructor.__backup);
+      this.constructor.__backup = {};
+      return this;
+    };
+    KnockoutModel.prototype.start_transaction = function() {
+      var i, item, _results;
+      _results = [];
+      for (i in this) {
+        if (!__hasProp.call(this, i)) continue;
+        item = this[i];
+        _results.push(typeof this[i].equalityComparer === "function" ? this[i].equalityComparer = function() {
+          return true;
+        } : void 0);
+      }
+      return _results;
+    };
+    KnockoutModel.prototype.commit = function() {
+      var i, item, _results;
+      _results = [];
+      for (i in this) {
+        if (!__hasProp.call(this, i)) continue;
+        item = this[i];
+        _results.push(typeof this[i].equalityComparer === "function" ? (this[i].equalityComparer = this.constructor.__equalityComparer, typeof this[i].valueHasMutated === "function" ? this[i].valueHasMutated() : void 0) : void 0);
+      }
+      return _results;
     };
     KnockoutModel.prototype.isNew = function() {
       var value;

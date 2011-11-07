@@ -29,12 +29,19 @@ class @KnockoutModel
     @__transientParameters: []
     @__afterHooks: {}
     @__cacheContainer: new ko.utils.IdentityMap()
+    @__backup: {}
+    @__equalityComparer: (a,b) ->
+      primitiveTypes = {'undefined':true, 'boolean':true, 'number':true, 'string':true }
+      oldValueIsPrimitive = (a is null) or (typeof(a) in primitiveTypes)
+      if oldValueIsPrimitive then (a is b) else false
 
     # Sets default values on initialization
     constructor: ->
         @__urls = @constructor.__urls
         for own i,item of @
           if i isnt "__urls"
+            if ko.isObservable(@[i])
+              @[i].equalityComparer = @constructor.__equalityComparer
             @constructor.__defaults[i] = @get(i)
 
     # instance urls list
@@ -157,6 +164,28 @@ class @KnockoutModel
             if args[i] is true or args[i] is undefined
                 temp[i] = @get(i)
         temp
+    
+    # Stores the actual model values in a temporary variable
+    backup: -> @constructor.__backup = @toJS()
+
+    # Restores the model values in a temporary variable
+    restore: ->
+      @set @constructor.__backup
+      @constructor.__backup = {}
+      @
+
+    # Disconnects the model temporarily of binding notifications
+    start_transaction: ->
+      for own i,item of @
+        if typeof @[i].equalityComparer is "function"
+          @[i].equalityComparer = -> true
+
+    # Reconnects the model with subscribers and notifies them   
+    commit: ->
+      for own i,item of @
+        if typeof @[i].equalityComparer is "function"
+          @[i].equalityComparer = @constructor.__equalityComparer
+          @[i].valueHasMutated() if typeof @[i].valueHasMutated is "function"
 
     # A simple convention: if model.id is blank, then it's new
     isNew: ->
