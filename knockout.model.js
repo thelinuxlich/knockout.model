@@ -129,7 +129,7 @@
       return this.constructor.doGet(url, params, callback, type);
     };
     KnockoutModel.doPost = function(routeName, params, callback, type) {
-      var className, url;
+      var ah, className, url;
       if (params == null) {
         params = {};
       }
@@ -145,10 +145,11 @@
         url = this.__parse_url(routeName, params);
       }
       className = this.name;
+      ah = this.__afterHooks;
       return RQ.add($.post(url, params, function(data) {
         try {
-          if (typeof this.__afterHooks[routeName] === "function") {
-            this.__afterHooks[routeName](data);
+          if (typeof ah[routeName] === "function") {
+            ah[routeName](data);
           }
           if (typeof callback === "function") {
             return callback(data);
@@ -159,7 +160,7 @@
       }, type), ("rq_" + className + "_") + new Date());
     };
     KnockoutModel.doGet = function(routeName, params, callback, type) {
-      var cached, cc, className, isCache, tempParams, url;
+      var ah, cached, cc, className, isCache, tempParams, url;
       if (params == null) {
         params = {};
       }
@@ -180,6 +181,7 @@
         delete params["__cache"];
       }
       cc = this.__cacheContainer;
+      ah = this.__afterHooks;
       if (isCache === true) {
         cached = cc.find("" + className + "#" + routeName, params);
       }
@@ -199,8 +201,8 @@
             });
           }
           try {
-            if (typeof this.__afterHooks[routeName] === "function") {
-              this.__afterHooks[routeName](data);
+            if (typeof ah[routeName] === "function") {
+              ah[routeName](data);
             }
             if (typeof callback === "function") {
               return callback(data);

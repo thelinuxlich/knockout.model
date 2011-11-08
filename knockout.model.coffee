@@ -92,9 +92,10 @@ class @KnockoutModel
         else
             url = @__parse_url(routeName,params)
         className = @name
+        ah = @__afterHooks
         RQ.add ($.post url, params, (data) ->
                 try
-                    @__afterHooks[routeName](data) if typeof @__afterHooks[routeName] is "function"
+                    ah[routeName](data) if typeof ah[routeName] is "function"
                     callback(data) if typeof callback is "function"
                 catch error    
             , type
@@ -110,6 +111,7 @@ class @KnockoutModel
         isCache = params["__cache"] is true
         delete params["__cache"] if isCache is true
         cc = @__cacheContainer
+        ah = @__afterHooks
         cached = cc.find("#{className}##{routeName}", params) if isCache is true
         if cached?
             callback(cached.data) if typeof callback is "function"
@@ -119,8 +121,9 @@ class @KnockoutModel
             RQ.add $.get url, tempParams, (data) ->
                     cc.push({id: "#{className}##{routeName}", params: params,data: data}) if isCache is true
                     try
-                        @__afterHooks[routeName](data) if typeof @__afterHooks[routeName] is "function"
-                        callback(data) if typeof callback is "function"
+                      if typeof ah[routeName] is "function"
+                        ah[routeName](data)                         
+                      callback(data) if typeof callback is "function"
                     catch error    
                 , type
             , "rq_#{className}_"+new Date()
