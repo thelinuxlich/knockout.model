@@ -63,7 +63,7 @@ class @KnockoutModel
 
     # creates an action with HTTP POST
     doPost: (routeName,params = {},callback = null,type = "json") ->
-        if routeName.match(/^http:\/\//) is null
+        if routeName.match(/^https?:\/\//) is null
             url = @__urls[routeName]
         else
             url = routeName
@@ -71,7 +71,7 @@ class @KnockoutModel
 
     # creates an action with HTTP GET
     doGet: (routeName,params = {},callback = null,type = "json") ->
-        if routeName.match(/^http:\/\//) is null
+        if routeName.match(/^https?:\/\//) is null
             url = @__urls[routeName]
         else
             url = routeName
@@ -79,7 +79,7 @@ class @KnockoutModel
 
     # (static) creates an action with HTTP POST 
     @doPost: (routeName,params = {},callback = null,type = "json") ->
-        if routeName.match(/^http:\/\//) is null
+        if routeName.match(/^https?:\/\//) is null
             url = @__parse_url(@__urls[routeName],params)
         else
             url = @__parse_url(routeName,params)
@@ -93,7 +93,7 @@ class @KnockoutModel
 
     # (static) creates an action with HTTP GET
     @doGet: (routeName,params = {},callback = null,type = "json") ->
-        if routeName.match(/^http:\/\//) is null
+        if routeName.match(/^https?:\/\//) is null
             url = @__parse_url(@__urls[routeName],params)
         else
             url = @__parse_url(routeName,params)
