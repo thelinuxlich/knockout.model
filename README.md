@@ -81,7 +81,7 @@ Date: Fri Mar 04 14:00:29 2011 -0300
                 return "disabled";
              }
         }, this);
-        super.init.call(this) // if you want the this.__defaults applied to your model instance, call super.init.call(this)
+        super.init.call(this); // if you want the this.__defaults applied to your model instance, call super.init.call(this)
 
         this.validate = function() {
             return(this.name() !== "" && this.surname() !== "" && this.birth_date() !== "");
