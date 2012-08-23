@@ -83,7 +83,7 @@ var Employee = Ctor(KoModel, function(super) { // inheriting KoModel to boost yo
     }, this);
     super.init.call(this) // if you want the this.__defaults applied to your model instance, call super.init.call(this)
 
-    this.validate = function() {
+    this.validate: function() {
         return(this.name() !== "" && this.surname() !== "" && this.birth_date() !== "");
     }
 });
