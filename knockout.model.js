@@ -163,7 +163,6 @@ var KoModel = Ctor(function() {
     } else {
       url = this.__parse_url(routeName, params);
     }
-    className = this.name;
     ah = this.__afterHooks;
     return RQ.add($.post(url, params, function(data) {
       try {
@@ -176,7 +175,7 @@ var KoModel = Ctor(function() {
       } catch (error) {
 
       }
-    }, type), ("rq_" + className + "_") + new Date());
+    }, type), ("rq_") + new Date());
   };
 
   var doGet = function(routeName, params, callback, type) {
@@ -195,7 +194,6 @@ var KoModel = Ctor(function() {
     } else {
       url = this.__parse_url(routeName, params);
     }
-    className = this.name;
     isCache = params["__cache"] === true;
     if (isCache === true) {
       delete params["__cache"];
@@ -203,7 +201,7 @@ var KoModel = Ctor(function() {
     cc = this.__cacheContainer;
     ah = this.__afterHooks;
     if (isCache === true) {
-      cached = cc.find("" + className + "#" + routeName, params);
+      cached = cc.find("#" + routeName, params);
     }
     if (cached != null) {
       if (typeof callback === "function") {
@@ -215,7 +213,7 @@ var KoModel = Ctor(function() {
       return RQ.add($.get(url, tempParams, function(data) {
         if (isCache === true) {
           cc.push({
-            id: "" + className + "#" + routeName,
+            id: "#" + routeName,
             params: params,
             data: data
           });
@@ -230,7 +228,7 @@ var KoModel = Ctor(function() {
         } catch (error) {
 
         }
-      }, type, ("rq_" + className + "_") + new Date()));
+      }, type, ("rq_") + new Date()));
     }
   };
 
