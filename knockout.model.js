@@ -234,7 +234,7 @@ var KoModel = Ctor(function() {
     }
   };
 
-  var createCollection = function(data, callback) {
+  this.createCollection = function(data, callback) {
     var collection, item, obj, _i, _len;
     collection = [];
     for (_i = 0, _len = data.length; _i < _len; _i++) {
@@ -468,9 +468,5 @@ var KoModel = Ctor(function() {
     var callback, params, _ref;
     _ref = this.__generate_request_parameters.apply(this, arguments), params = _ref[0], callback = _ref[1];
     return this.doGet("index", params, callback);
-  };
-
-  var killAllRequests = function() {
-    return RQ.killByRegex(/^rq_#{@name}_/);
   };
 });
